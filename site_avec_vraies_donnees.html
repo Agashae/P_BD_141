@@ -1,0 +1,4597 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Mon catalogue de voitures</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .filtres { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+    .filtres > div { display: flex; flex-direction: column; }
+    label { font-size: 12px; margin-bottom: 3px; }
+    #sql { background: #f4f4f4; padding: 10px; white-space: pre-wrap; font-family: monospace; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+  </style>
+</head>
+<body>
+
+  <h1>Catalogue de voitures</h1>
+
+  <div class="filtres">
+    <div>
+      <label>Marque</label>
+      <select id="fMarque"><option value="">Toutes</option></select>
+    </div>
+    <div>
+      <label>Prix min</label>
+      <input type="number" id="fPrixMin">
+    </div>
+    <div>
+      <label>Prix max</label>
+      <input type="number" id="fPrixMax">
+    </div>
+    <div>
+      <label>Année min</label>
+      <input type="number" id="fAnneeMin">
+    </div>
+    <div>
+      <label>Année max</label>
+      <input type="number" id="fAnneeMax">
+    </div>
+    <div>
+      <label>Motorisation</label>
+      <select id="fMotorisation">
+        <option value="">Toutes</option>
+        <option>Essence</option>
+        <option>Diesel</option>
+        <option>Hybride</option>
+        <option>Hybride rechargeable</option>
+        <option>Électrique</option>
+      </select>
+    </div>
+    <div>
+      <label>Boîte</label>
+      <select id="fBoite">
+        <option value="">Toutes</option>
+        <option>Manuelle</option>
+        <option>Automatique</option>
+      </select>
+    </div>
+    <div>
+      <label>Portes</label>
+      <select id="fPortes">
+        <option value="">Toutes</option>
+        <option>3</option>
+        <option>5</option>
+      </select>
+    </div>
+  </div>
+
+  <p><strong id="compteur"></strong></p>
+  <table id="tableauResultats">
+    <thead>
+      <tr><th>Modèle</th><th>Marque</th><th>Année</th><th>Prix</th><th>Motorisation</th><th>Boîte</th><th>Portes</th></tr>
+    </thead>
+    <tbody id="resultats"></tbody>
+  </table>
+
+  <h2>Requête SQL à copier dans SSMS</h2>
+  <div id="sql"></div>
+  <button onclick="copierSql()">Copier la requête</button>
+  <span id="messageCopie"></span>
+
+  <!--
+    ==========================================================
+    DONNEES DE LA BASE - a remplacer quand tes donnees changent
+    ==========================================================
+    1. Dans SSMS, execute la requete fournie (voir README plus bas)
+    2. Passe en mode "Resultats en texte" (Ctrl+T) avant d'executer,
+       pour ne pas avoir un resultat tronque
+    3. Copie tout le texte JSON obtenu
+    4. Colle-le ici, à la place du contenu actuel entre les balises
+       <script id="donnees-voitures"> ci-dessous
+    5. Sauvegarde le fichier, actualise la page dans le navigateur
+    ==========================================================
+  -->
+  <script id="donnees-voitures" type="application/json">
+[
+  {
+    "modele": "T-Roc",
+    "marque": "Volkswagen",
+    "annee": 2000,
+    "prix": 3733,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Anna Meyer"
+  },
+  {
+    "modele": "X1",
+    "marque": "BMW",
+    "annee": 2001,
+    "prix": 4466,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Julien Wyss"
+  },
+  {
+    "modele": "Aygo",
+    "marque": "Toyota",
+    "annee": 2002,
+    "prix": 5199,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Elena Moser"
+  },
+  {
+    "modele": "Q5",
+    "marque": "Audi",
+    "annee": 2003,
+    "prix": 5932,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Enzo Steiner"
+  },
+  {
+    "modele": "Classe A",
+    "marque": "Mercedes-Benz",
+    "annee": 2004,
+    "prix": 6665,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Silvia Schneider"
+  },
+  {
+    "modele": "Captur",
+    "marque": "Renault",
+    "annee": 2005,
+    "prix": 7398,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Wyss"
+  },
+  {
+    "modele": "2008",
+    "marque": "Peugeot",
+    "annee": 2006,
+    "prix": 8131,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Pauline Conti"
+  },
+  {
+    "modele": "Focus",
+    "marque": "Ford",
+    "annee": 2007,
+    "prix": 8864,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Emma Costa"
+  },
+  {
+    "modele": "Karoq",
+    "marque": "Skoda",
+    "annee": 2008,
+    "prix": 9597,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Werner Schmid"
+  },
+  {
+    "modele": "Punto",
+    "marque": "Fiat",
+    "annee": 2009,
+    "prix": 10330,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Julien Huber"
+  },
+  {
+    "modele": "Crossland",
+    "marque": "Opel",
+    "annee": 2010,
+    "prix": 11063,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Camille Zimmermann"
+  },
+  {
+    "modele": "Arona",
+    "marque": "Seat",
+    "annee": 2011,
+    "prix": 11796,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Marco Villa"
+  },
+  {
+    "modele": "S60",
+    "marque": "Volvo",
+    "annee": 2012,
+    "prix": 12529,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Julien Marchetti"
+  },
+  {
+    "modele": "CX-5",
+    "marque": "Mazda",
+    "annee": 2013,
+    "prix": 13262,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Nathan Gasser"
+  },
+  {
+    "modele": "Tucson",
+    "marque": "Hyundai",
+    "annee": 2014,
+    "prix": 13995,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nina Ammann"
+  },
+  {
+    "modele": "Rio",
+    "marque": "Kia",
+    "annee": 2015,
+    "prix": 14728,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Thomas Golay"
+  },
+  {
+    "modele": "X-Trail",
+    "marque": "Nissan",
+    "annee": 2016,
+    "prix": 15461,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Enzo Perrin"
+  },
+  {
+    "modele": "HR-V",
+    "marque": "Honda",
+    "annee": 2017,
+    "prix": 16194,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Timéo Graf"
+  },
+  {
+    "modele": "C3",
+    "marque": "Citroën",
+    "annee": 2018,
+    "prix": 16927,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Fritz Guerra"
+  },
+  {
+    "modele": "Cooper",
+    "marque": "Mini",
+    "annee": 2019,
+    "prix": 17660,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Marc Blanc"
+  },
+  {
+    "modele": "Passat",
+    "marque": "Volkswagen",
+    "annee": 2020,
+    "prix": 18393,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Fritz Gerber"
+  },
+  {
+    "modele": "X5",
+    "marque": "BMW",
+    "annee": 2021,
+    "prix": 19126,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Cindy Piguet"
+  },
+  {
+    "modele": "C-HR",
+    "marque": "Toyota",
+    "annee": 2022,
+    "prix": 19859,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Petra Graf"
+  },
+  {
+    "modele": "A4",
+    "marque": "Audi",
+    "annee": 2023,
+    "prix": 20592,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Mathis Frei"
+  },
+  {
+    "modele": "Classe A",
+    "marque": "Mercedes-Benz",
+    "annee": 2024,
+    "prix": 21325,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Bruno Martin"
+  },
+  {
+    "modele": "Mégane",
+    "marque": "Renault",
+    "annee": 2025,
+    "prix": 22058,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Noah Huber"
+  },
+  {
+    "modele": "2008",
+    "marque": "Peugeot",
+    "annee": 2026,
+    "prix": 22791,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Claudia Schneider"
+  },
+  {
+    "modele": "Focus",
+    "marque": "Ford",
+    "annee": 2000,
+    "prix": 23524,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Andrea Voisin"
+  },
+  {
+    "modele": "Octavia",
+    "marque": "Skoda",
+    "annee": 2001,
+    "prix": 24257,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Andrea Villa"
+  },
+  {
+    "modele": "Panda",
+    "marque": "Fiat",
+    "annee": 2002,
+    "prix": 24990,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Yann Lambert"
+  },
+  {
+    "modele": "Corsa",
+    "marque": "Opel",
+    "annee": 2003,
+    "prix": 25723,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nicolas Marti"
+  },
+  {
+    "modele": "Ibiza",
+    "marque": "Seat",
+    "annee": 2004,
+    "prix": 26456,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Ahmed Conti"
+  },
+  {
+    "modele": "XC60",
+    "marque": "Volvo",
+    "annee": 2005,
+    "prix": 27189,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Léa Serra"
+  },
+  {
+    "modele": "CX-5",
+    "marque": "Mazda",
+    "annee": 2006,
+    "prix": 27922,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Claudia Huber"
+  },
+  {
+    "modele": "Kona",
+    "marque": "Hyundai",
+    "annee": 2007,
+    "prix": 28655,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jonas Roth"
+  },
+  {
+    "modele": "Picanto",
+    "marque": "Kia",
+    "annee": 2008,
+    "prix": 29388,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Regula Wenger"
+  },
+  {
+    "modele": "Leaf",
+    "marque": "Nissan",
+    "annee": 2009,
+    "prix": 30121,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jade Marino"
+  },
+  {
+    "modele": "HR-V",
+    "marque": "Honda",
+    "annee": 2010,
+    "prix": 30854,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Yves Rossier"
+  },
+  {
+    "modele": "Berlingo",
+    "marque": "Citroën",
+    "annee": 2011,
+    "prix": 31587,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Léon Baumann"
+  },
+  {
+    "modele": "Countryman",
+    "marque": "Mini",
+    "annee": 2012,
+    "prix": 32320,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Vanessa Weber"
+  },
+  {
+    "modele": "Tiguan",
+    "marque": "Volkswagen",
+    "annee": 2013,
+    "prix": 33053,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nicolas Vogel"
+  },
+  {
+    "modele": "X3",
+    "marque": "BMW",
+    "annee": 2014,
+    "prix": 33786,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Enzo Girard"
+  },
+  {
+    "modele": "Aygo",
+    "marque": "Toyota",
+    "annee": 2015,
+    "prix": 34519,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "David Huber"
+  },
+  {
+    "modele": "A3",
+    "marque": "Audi",
+    "annee": 2016,
+    "prix": 35252,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Monika Zimmermann"
+  },
+  {
+    "modele": "Classe C",
+    "marque": "Mercedes-Benz",
+    "annee": 2017,
+    "prix": 35985,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Yves Schneider"
+  },
+  {
+    "modele": "Clio",
+    "marque": "Renault",
+    "annee": 2018,
+    "prix": 36718,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Claudia Graf"
+  },
+  {
+    "modele": "208",
+    "marque": "Peugeot",
+    "annee": 2019,
+    "prix": 37451,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Ahmed Wenger"
+  },
+  {
+    "modele": "Kuga",
+    "marque": "Ford",
+    "annee": 2020,
+    "prix": 38184,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Regula Rossier"
+  },
+  {
+    "modele": "Octavia",
+    "marque": "Skoda",
+    "annee": 2021,
+    "prix": 38917,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Chloé Rossier"
+  },
+  {
+    "modele": "Panda",
+    "marque": "Fiat",
+    "annee": 2022,
+    "prix": 39650,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Andrea Frei"
+  },
+  {
+    "modele": "Crossland",
+    "marque": "Opel",
+    "annee": 2023,
+    "prix": 40383,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Simon Graf"
+  },
+  {
+    "modele": "Ateca",
+    "marque": "Seat",
+    "annee": 2024,
+    "prix": 41116,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Cindy Serra"
+  },
+  {
+    "modele": "XC40",
+    "marque": "Volvo",
+    "annee": 2025,
+    "prix": 41849,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Kevin Kunz"
+  },
+  {
+    "modele": "MX-5",
+    "marque": "Mazda",
+    "annee": 2026,
+    "prix": 42582,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Laura Villa"
+  },
+  {
+    "modele": "i20",
+    "marque": "Hyundai",
+    "annee": 2000,
+    "prix": 43315,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Anna Gerber"
+  },
+  {
+    "modele": "Picanto",
+    "marque": "Kia",
+    "annee": 2001,
+    "prix": 44048,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Thomas Marti"
+  },
+  {
+    "modele": "Leaf",
+    "marque": "Nissan",
+    "annee": 2002,
+    "prix": 44781,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Sarah Gerber"
+  },
+  {
+    "modele": "CR-V",
+    "marque": "Honda",
+    "annee": 2003,
+    "prix": 45514,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Ahmed Currat"
+  },
+  {
+    "modele": "C5 Aircross",
+    "marque": "Citroën",
+    "annee": 2004,
+    "prix": 46247,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Elena Serra"
+  },
+  {
+    "modele": "Coupé",
+    "marque": "Mini",
+    "annee": 2005,
+    "prix": 46980,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Anna Ammann"
+  },
+  {
+    "modele": "T-Roc",
+    "marque": "Volkswagen",
+    "annee": 2006,
+    "prix": 47713,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jonas Zimmermann"
+  },
+  {
+    "modele": "X5",
+    "marque": "BMW",
+    "annee": 2007,
+    "prix": 48446,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Dupont"
+  },
+  {
+    "modele": "RAV4",
+    "marque": "Toyota",
+    "annee": 2008,
+    "prix": 49179,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Regula Girard"
+  },
+  {
+    "modele": "Q3",
+    "marque": "Audi",
+    "annee": 2009,
+    "prix": 49912,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Hans Keller"
+  },
+  {
+    "modele": "GLC",
+    "marque": "Mercedes-Benz",
+    "annee": 2010,
+    "prix": 50645,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Enzo Morel"
+  },
+  {
+    "modele": "Twingo",
+    "marque": "Renault",
+    "annee": 2011,
+    "prix": 51378,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Nicolas Lambert"
+  },
+  {
+    "modele": "3008",
+    "marque": "Peugeot",
+    "annee": 2012,
+    "prix": 52111,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Michael Rochat"
+  },
+  {
+    "modele": "Mustang",
+    "marque": "Ford",
+    "annee": 2013,
+    "prix": 52844,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Elena Weber"
+  },
+  {
+    "modele": "Karoq",
+    "marque": "Skoda",
+    "annee": 2014,
+    "prix": 53577,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Camille Testa"
+  },
+  {
+    "modele": "Panda",
+    "marque": "Fiat",
+    "annee": 2015,
+    "prix": 54310,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Léon Marino"
+  },
+  {
+    "modele": "Insignia",
+    "marque": "Opel",
+    "annee": 2016,
+    "prix": 55043,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Vanessa Dupont"
+  },
+  {
+    "modele": "Ateca",
+    "marque": "Seat",
+    "annee": 2017,
+    "prix": 55776,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Camille Kunz"
+  },
+  {
+    "modele": "XC90",
+    "marque": "Volvo",
+    "annee": 2018,
+    "prix": 56509,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Giulia Rochat"
+  },
+  {
+    "modele": "Mazda3",
+    "marque": "Mazda",
+    "annee": 2019,
+    "prix": 57242,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Denis Testa"
+  },
+  {
+    "modele": "i30",
+    "marque": "Hyundai",
+    "annee": 2020,
+    "prix": 57975,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nina Favre"
+  },
+  {
+    "modele": "Niro",
+    "marque": "Kia",
+    "annee": 2021,
+    "prix": 58708,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Mathis Widmer"
+  },
+  {
+    "modele": "Leaf",
+    "marque": "Nissan",
+    "annee": 2022,
+    "prix": 59441,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Lucas Moser"
+  },
+  {
+    "modele": "CR-V",
+    "marque": "Honda",
+    "annee": 2023,
+    "prix": 60174,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Silvia Marchetti"
+  },
+  {
+    "modele": "C4",
+    "marque": "Citroën",
+    "annee": 2024,
+    "prix": 60907,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Thomas Widmer"
+  },
+  {
+    "modele": "Cabrio",
+    "marque": "Mini",
+    "annee": 2025,
+    "prix": 61640,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Silvia Costa"
+  },
+  {
+    "modele": "Golf",
+    "marque": "Volkswagen",
+    "annee": 2026,
+    "prix": 62373,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Werner Fontana"
+  },
+  {
+    "modele": "X1",
+    "marque": "BMW",
+    "annee": 2000,
+    "prix": 63106,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Timéo Rochat"
+  },
+  {
+    "modele": "Corolla",
+    "marque": "Toyota",
+    "annee": 2001,
+    "prix": 63839,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Stefan Zimmermann"
+  },
+  {
+    "modele": "A4",
+    "marque": "Audi",
+    "annee": 2002,
+    "prix": 64572,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Lucas Bianchi"
+  },
+  {
+    "modele": "Classe E",
+    "marque": "Mercedes-Benz",
+    "annee": 2003,
+    "prix": 65305,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Giulia Huber"
+  },
+  {
+    "modele": "Captur",
+    "marque": "Renault",
+    "annee": 2004,
+    "prix": 66038,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Bruno Keller"
+  },
+  {
+    "modele": "508",
+    "marque": "Peugeot",
+    "annee": 2005,
+    "prix": 66771,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Yves Meyer"
+  },
+  {
+    "modele": "Fiesta",
+    "marque": "Ford",
+    "annee": 2006,
+    "prix": 67504,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Mathis Wenger"
+  },
+  {
+    "modele": "Octavia",
+    "marque": "Skoda",
+    "annee": 2007,
+    "prix": 68237,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Chloé Fontaine"
+  },
+  {
+    "modele": "Panda",
+    "marque": "Fiat",
+    "annee": 2008,
+    "prix": 68970,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Piguet"
+  },
+  {
+    "modele": "Astra",
+    "marque": "Opel",
+    "annee": 2009,
+    "prix": 69703,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Alice Weber"
+  },
+  {
+    "modele": "Ateca",
+    "marque": "Seat",
+    "annee": 2010,
+    "prix": 70436,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Claudia Currat"
+  },
+  {
+    "modele": "XC60",
+    "marque": "Volvo",
+    "annee": 2011,
+    "prix": 71169,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Alice Favre"
+  },
+  {
+    "modele": "Mazda3",
+    "marque": "Mazda",
+    "annee": 2012,
+    "prix": 71902,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Elisa Widmer"
+  },
+  {
+    "modele": "i10",
+    "marque": "Hyundai",
+    "annee": 2013,
+    "prix": 72635,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jonas Guerra"
+  },
+  {
+    "modele": "Sportage",
+    "marque": "Kia",
+    "annee": 2014,
+    "prix": 73368,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Marc Stalder"
+  },
+  {
+    "modele": "Leaf",
+    "marque": "Nissan",
+    "annee": 2015,
+    "prix": 74101,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Fabio Meyer"
+  },
+  {
+    "modele": "Jazz",
+    "marque": "Honda",
+    "annee": 2016,
+    "prix": 74834,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Marino"
+  },
+  {
+    "modele": "Berlingo",
+    "marque": "Citroën",
+    "annee": 2017,
+    "prix": 75567,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Thomas Blanc"
+  },
+  {
+    "modele": "Cabrio",
+    "marque": "Mini",
+    "annee": 2018,
+    "prix": 76300,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Elena Girard"
+  },
+  {
+    "modele": "Tiguan",
+    "marque": "Volkswagen",
+    "annee": 2019,
+    "prix": 77033,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Anna Meyer"
+  },
+  {
+    "modele": "Série 1",
+    "marque": "BMW",
+    "annee": 2020,
+    "prix": 77766,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Julien Wyss"
+  },
+  {
+    "modele": "Corolla",
+    "marque": "Toyota",
+    "annee": 2021,
+    "prix": 78499,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Elena Moser"
+  },
+  {
+    "modele": "Q3",
+    "marque": "Audi",
+    "annee": 2022,
+    "prix": 79232,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Enzo Steiner"
+  },
+  {
+    "modele": "GLA",
+    "marque": "Mercedes-Benz",
+    "annee": 2023,
+    "prix": 79965,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Silvia Schneider"
+  },
+  {
+    "modele": "Twingo",
+    "marque": "Renault",
+    "annee": 2024,
+    "prix": 80698,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Wyss"
+  },
+  {
+    "modele": "208",
+    "marque": "Peugeot",
+    "annee": 2025,
+    "prix": 81431,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Pauline Conti"
+  },
+  {
+    "modele": "Mustang",
+    "marque": "Ford",
+    "annee": 2026,
+    "prix": 82164,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Emma Costa"
+  },
+  {
+    "modele": "Karoq",
+    "marque": "Skoda",
+    "annee": 2000,
+    "prix": 82897,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Werner Schmid"
+  },
+  {
+    "modele": "500X",
+    "marque": "Fiat",
+    "annee": 2001,
+    "prix": 83630,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Julien Huber"
+  },
+  {
+    "modele": "Corsa",
+    "marque": "Opel",
+    "annee": 2002,
+    "prix": 84363,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Camille Zimmermann"
+  },
+  {
+    "modele": "Arona",
+    "marque": "Seat",
+    "annee": 2003,
+    "prix": 85096,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Marco Villa"
+  },
+  {
+    "modele": "XC90",
+    "marque": "Volvo",
+    "annee": 2004,
+    "prix": 85829,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Julien Marchetti"
+  },
+  {
+    "modele": "CX-5",
+    "marque": "Mazda",
+    "annee": 2005,
+    "prix": 86562,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Nathan Gasser"
+  },
+  {
+    "modele": "Tucson",
+    "marque": "Hyundai",
+    "annee": 2006,
+    "prix": 87295,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nina Ammann"
+  },
+  {
+    "modele": "Niro",
+    "marque": "Kia",
+    "annee": 2007,
+    "prix": 88028,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Thomas Golay"
+  },
+  {
+    "modele": "X-Trail",
+    "marque": "Nissan",
+    "annee": 2008,
+    "prix": 88761,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Enzo Perrin"
+  },
+  {
+    "modele": "Accord",
+    "marque": "Honda",
+    "annee": 2009,
+    "prix": 89494,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Timéo Graf"
+  },
+  {
+    "modele": "C3",
+    "marque": "Citroën",
+    "annee": 2010,
+    "prix": 90227,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Fritz Guerra"
+  },
+  {
+    "modele": "Cabrio",
+    "marque": "Mini",
+    "annee": 2011,
+    "prix": 90960,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Marc Blanc"
+  },
+  {
+    "modele": "Polo",
+    "marque": "Volkswagen",
+    "annee": 2012,
+    "prix": 91693,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Fritz Gerber"
+  },
+  {
+    "modele": "X1",
+    "marque": "BMW",
+    "annee": 2013,
+    "prix": 92426,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Cindy Piguet"
+  },
+  {
+    "modele": "Aygo",
+    "marque": "Toyota",
+    "annee": 2014,
+    "prix": 93159,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Petra Graf"
+  },
+  {
+    "modele": "Q3",
+    "marque": "Audi",
+    "annee": 2015,
+    "prix": 93892,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Mathis Frei"
+  },
+  {
+    "modele": "Classe A",
+    "marque": "Mercedes-Benz",
+    "annee": 2016,
+    "prix": 94625,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Bruno Martin"
+  },
+  {
+    "modele": "Scénic",
+    "marque": "Renault",
+    "annee": 2017,
+    "prix": 95358,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Noah Huber"
+  },
+  {
+    "modele": "2008",
+    "marque": "Peugeot",
+    "annee": 2018,
+    "prix": 96091,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Claudia Schneider"
+  },
+  {
+    "modele": "Kuga",
+    "marque": "Ford",
+    "annee": 2019,
+    "prix": 96824,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Andrea Voisin"
+  },
+  {
+    "modele": "Octavia",
+    "marque": "Skoda",
+    "annee": 2020,
+    "prix": 97557,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Andrea Villa"
+  },
+  {
+    "modele": "500X",
+    "marque": "Fiat",
+    "annee": 2021,
+    "prix": 98290,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Yann Lambert"
+  },
+  {
+    "modele": "Astra",
+    "marque": "Opel",
+    "annee": 2022,
+    "prix": 99023,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nicolas Marti"
+  },
+  {
+    "modele": "Tarraco",
+    "marque": "Seat",
+    "annee": 2023,
+    "prix": 99756,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Ahmed Conti"
+  },
+  {
+    "modele": "V60",
+    "marque": "Volvo",
+    "annee": 2024,
+    "prix": 100489,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Léa Serra"
+  },
+  {
+    "modele": "Mazda2",
+    "marque": "Mazda",
+    "annee": 2025,
+    "prix": 101222,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Claudia Huber"
+  },
+  {
+    "modele": "Tucson",
+    "marque": "Hyundai",
+    "annee": 2026,
+    "prix": 101955,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jonas Roth"
+  },
+  {
+    "modele": "Niro",
+    "marque": "Kia",
+    "annee": 2000,
+    "prix": 102688,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Regula Wenger"
+  },
+  {
+    "modele": "X-Trail",
+    "marque": "Nissan",
+    "annee": 2001,
+    "prix": 103421,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jade Marino"
+  },
+  {
+    "modele": "Civic",
+    "marque": "Honda",
+    "annee": 2002,
+    "prix": 104154,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Yves Rossier"
+  },
+  {
+    "modele": "C1",
+    "marque": "Citroën",
+    "annee": 2003,
+    "prix": 104887,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Léon Baumann"
+  },
+  {
+    "modele": "Cabrio",
+    "marque": "Mini",
+    "annee": 2004,
+    "prix": 105620,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Vanessa Weber"
+  },
+  {
+    "modele": "Polo",
+    "marque": "Volkswagen",
+    "annee": 2005,
+    "prix": 106353,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nicolas Vogel"
+  },
+  {
+    "modele": "X3",
+    "marque": "BMW",
+    "annee": 2006,
+    "prix": 107086,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Enzo Girard"
+  },
+  {
+    "modele": "Corolla",
+    "marque": "Toyota",
+    "annee": 2007,
+    "prix": 107819,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "David Huber"
+  },
+  {
+    "modele": "A1",
+    "marque": "Audi",
+    "annee": 2008,
+    "prix": 108552,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Monika Zimmermann"
+  },
+  {
+    "modele": "Classe E",
+    "marque": "Mercedes-Benz",
+    "annee": 2009,
+    "prix": 109285,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Yves Schneider"
+  },
+  {
+    "modele": "Scénic",
+    "marque": "Renault",
+    "annee": 2010,
+    "prix": 110018,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Claudia Graf"
+  },
+  {
+    "modele": "2008",
+    "marque": "Peugeot",
+    "annee": 2011,
+    "prix": 110751,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Ahmed Wenger"
+  },
+  {
+    "modele": "Focus",
+    "marque": "Ford",
+    "annee": 2012,
+    "prix": 111484,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Regula Rossier"
+  },
+  {
+    "modele": "Karoq",
+    "marque": "Skoda",
+    "annee": 2013,
+    "prix": 112217,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Chloé Rossier"
+  },
+  {
+    "modele": "Tipo",
+    "marque": "Fiat",
+    "annee": 2014,
+    "prix": 112950,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Andrea Frei"
+  },
+  {
+    "modele": "Mokka",
+    "marque": "Opel",
+    "annee": 2015,
+    "prix": 113683,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Simon Graf"
+  },
+  {
+    "modele": "Ateca",
+    "marque": "Seat",
+    "annee": 2016,
+    "prix": 114416,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Cindy Serra"
+  },
+  {
+    "modele": "XC90",
+    "marque": "Volvo",
+    "annee": 2017,
+    "prix": 115149,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Kevin Kunz"
+  },
+  {
+    "modele": "CX-5",
+    "marque": "Mazda",
+    "annee": 2018,
+    "prix": 115882,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Laura Villa"
+  },
+  {
+    "modele": "i30",
+    "marque": "Hyundai",
+    "annee": 2019,
+    "prix": 116615,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Anna Gerber"
+  },
+  {
+    "modele": "Picanto",
+    "marque": "Kia",
+    "annee": 2020,
+    "prix": 117348,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Thomas Marti"
+  },
+  {
+    "modele": "Leaf",
+    "marque": "Nissan",
+    "annee": 2021,
+    "prix": 118081,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Sarah Gerber"
+  },
+  {
+    "modele": "Civic",
+    "marque": "Honda",
+    "annee": 2022,
+    "prix": 118814,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Ahmed Currat"
+  },
+  {
+    "modele": "Berlingo",
+    "marque": "Citroën",
+    "annee": 2023,
+    "prix": 119547,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Elena Serra"
+  },
+  {
+    "modele": "Cooper",
+    "marque": "Mini",
+    "annee": 2024,
+    "prix": 120280,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Anna Ammann"
+  },
+  {
+    "modele": "Passat",
+    "marque": "Volkswagen",
+    "annee": 2025,
+    "prix": 121013,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jonas Zimmermann"
+  },
+  {
+    "modele": "Série 3",
+    "marque": "BMW",
+    "annee": 2026,
+    "prix": 121746,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Dupont"
+  },
+  {
+    "modele": "Yaris",
+    "marque": "Toyota",
+    "annee": 2000,
+    "prix": 122479,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Regula Girard"
+  },
+  {
+    "modele": "A1",
+    "marque": "Audi",
+    "annee": 2001,
+    "prix": 123212,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Hans Keller"
+  },
+  {
+    "modele": "Classe A",
+    "marque": "Mercedes-Benz",
+    "annee": 2002,
+    "prix": 123945,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Enzo Morel"
+  },
+  {
+    "modele": "Mégane",
+    "marque": "Renault",
+    "annee": 2003,
+    "prix": 124678,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Nicolas Lambert"
+  },
+  {
+    "modele": "308",
+    "marque": "Peugeot",
+    "annee": 2004,
+    "prix": 125411,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Michael Rochat"
+  },
+  {
+    "modele": "Fiesta",
+    "marque": "Ford",
+    "annee": 2005,
+    "prix": 126144,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Elena Weber"
+  },
+  {
+    "modele": "Superb",
+    "marque": "Skoda",
+    "annee": 2006,
+    "prix": 126877,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Camille Testa"
+  },
+  {
+    "modele": "Panda",
+    "marque": "Fiat",
+    "annee": 2007,
+    "prix": 127610,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Léon Marino"
+  },
+  {
+    "modele": "Astra",
+    "marque": "Opel",
+    "annee": 2008,
+    "prix": 128343,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Vanessa Dupont"
+  },
+  {
+    "modele": "Leon",
+    "marque": "Seat",
+    "annee": 2009,
+    "prix": 129076,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Camille Kunz"
+  },
+  {
+    "modele": "S60",
+    "marque": "Volvo",
+    "annee": 2010,
+    "prix": 129809,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Giulia Rochat"
+  },
+  {
+    "modele": "Mazda2",
+    "marque": "Mazda",
+    "annee": 2011,
+    "prix": 130542,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Denis Testa"
+  },
+  {
+    "modele": "Kona",
+    "marque": "Hyundai",
+    "annee": 2012,
+    "prix": 131275,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nina Favre"
+  },
+  {
+    "modele": "Rio",
+    "marque": "Kia",
+    "annee": 2013,
+    "prix": 132008,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Mathis Widmer"
+  },
+  {
+    "modele": "Leaf",
+    "marque": "Nissan",
+    "annee": 2014,
+    "prix": 132741,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Lucas Moser"
+  },
+  {
+    "modele": "Jazz",
+    "marque": "Honda",
+    "annee": 2015,
+    "prix": 133474,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Silvia Marchetti"
+  },
+  {
+    "modele": "C4",
+    "marque": "Citroën",
+    "annee": 2016,
+    "prix": 134207,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Thomas Widmer"
+  },
+  {
+    "modele": "Countryman",
+    "marque": "Mini",
+    "annee": 2017,
+    "prix": 134940,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Silvia Costa"
+  },
+  {
+    "modele": "T-Roc",
+    "marque": "Volkswagen",
+    "annee": 2018,
+    "prix": 135673,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Werner Fontana"
+  },
+  {
+    "modele": "X5",
+    "marque": "BMW",
+    "annee": 2019,
+    "prix": 136406,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Timéo Rochat"
+  },
+  {
+    "modele": "Yaris",
+    "marque": "Toyota",
+    "annee": 2020,
+    "prix": 137139,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Stefan Zimmermann"
+  },
+  {
+    "modele": "A3",
+    "marque": "Audi",
+    "annee": 2021,
+    "prix": 137872,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Lucas Bianchi"
+  },
+  {
+    "modele": "Classe E",
+    "marque": "Mercedes-Benz",
+    "annee": 2022,
+    "prix": 138605,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Giulia Huber"
+  },
+  {
+    "modele": "Clio",
+    "marque": "Renault",
+    "annee": 2023,
+    "prix": 139338,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Bruno Keller"
+  },
+  {
+    "modele": "508",
+    "marque": "Peugeot",
+    "annee": 2024,
+    "prix": 140071,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Yves Meyer"
+  },
+  {
+    "modele": "Fiesta",
+    "marque": "Ford",
+    "annee": 2025,
+    "prix": 140804,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Mathis Wenger"
+  },
+  {
+    "modele": "Kamiq",
+    "marque": "Skoda",
+    "annee": 2026,
+    "prix": 141537,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Chloé Fontaine"
+  },
+  {
+    "modele": "Punto",
+    "marque": "Fiat",
+    "annee": 2000,
+    "prix": 142270,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Piguet"
+  },
+  {
+    "modele": "Insignia",
+    "marque": "Opel",
+    "annee": 2001,
+    "prix": 143003,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Alice Weber"
+  },
+  {
+    "modele": "Ateca",
+    "marque": "Seat",
+    "annee": 2002,
+    "prix": 143736,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Claudia Currat"
+  },
+  {
+    "modele": "XC60",
+    "marque": "Volvo",
+    "annee": 2003,
+    "prix": 144469,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Alice Favre"
+  },
+  {
+    "modele": "Mazda2",
+    "marque": "Mazda",
+    "annee": 2004,
+    "prix": 145202,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Elisa Widmer"
+  },
+  {
+    "modele": "Kona",
+    "marque": "Hyundai",
+    "annee": 2005,
+    "prix": 145935,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jonas Guerra"
+  },
+  {
+    "modele": "Rio",
+    "marque": "Kia",
+    "annee": 2006,
+    "prix": 146668,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Marc Stalder"
+  },
+  {
+    "modele": "Micra",
+    "marque": "Nissan",
+    "annee": 2007,
+    "prix": 147401,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Fabio Meyer"
+  },
+  {
+    "modele": "Jazz",
+    "marque": "Honda",
+    "annee": 2008,
+    "prix": 148134,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Marino"
+  },
+  {
+    "modele": "Berlingo",
+    "marque": "Citroën",
+    "annee": 2009,
+    "prix": 148867,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Thomas Blanc"
+  },
+  {
+    "modele": "Cooper",
+    "marque": "Mini",
+    "annee": 2010,
+    "prix": 149600,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Elena Girard"
+  },
+  {
+    "modele": "T-Roc",
+    "marque": "Volkswagen",
+    "annee": 2011,
+    "prix": 150333,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Anna Meyer"
+  },
+  {
+    "modele": "Série 1",
+    "marque": "BMW",
+    "annee": 2012,
+    "prix": 151066,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Julien Wyss"
+  },
+  {
+    "modele": "RAV4",
+    "marque": "Toyota",
+    "annee": 2013,
+    "prix": 151799,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Elena Moser"
+  },
+  {
+    "modele": "Q5",
+    "marque": "Audi",
+    "annee": 2014,
+    "prix": 152532,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Enzo Steiner"
+  },
+  {
+    "modele": "GLA",
+    "marque": "Mercedes-Benz",
+    "annee": 2015,
+    "prix": 3265,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Silvia Schneider"
+  },
+  {
+    "modele": "Captur",
+    "marque": "Renault",
+    "annee": 2016,
+    "prix": 3998,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Wyss"
+  },
+  {
+    "modele": "208",
+    "marque": "Peugeot",
+    "annee": 2017,
+    "prix": 4731,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Pauline Conti"
+  },
+  {
+    "modele": "Mustang",
+    "marque": "Ford",
+    "annee": 2018,
+    "prix": 5464,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Emma Costa"
+  },
+  {
+    "modele": "Kamiq",
+    "marque": "Skoda",
+    "annee": 2019,
+    "prix": 6197,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Werner Schmid"
+  },
+  {
+    "modele": "500",
+    "marque": "Fiat",
+    "annee": 2020,
+    "prix": 6930,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Julien Huber"
+  },
+  {
+    "modele": "Insignia",
+    "marque": "Opel",
+    "annee": 2021,
+    "prix": 7663,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Camille Zimmermann"
+  },
+  {
+    "modele": "Ateca",
+    "marque": "Seat",
+    "annee": 2022,
+    "prix": 8396,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Marco Villa"
+  },
+  {
+    "modele": "XC40",
+    "marque": "Volvo",
+    "annee": 2023,
+    "prix": 9129,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Julien Marchetti"
+  },
+  {
+    "modele": "CX-5",
+    "marque": "Mazda",
+    "annee": 2024,
+    "prix": 9862,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Nathan Gasser"
+  },
+  {
+    "modele": "i30",
+    "marque": "Hyundai",
+    "annee": 2025,
+    "prix": 10595,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nina Ammann"
+  },
+  {
+    "modele": "Sportage",
+    "marque": "Kia",
+    "annee": 2026,
+    "prix": 11328,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Thomas Golay"
+  },
+  {
+    "modele": "Qashqai",
+    "marque": "Nissan",
+    "annee": 2000,
+    "prix": 12061,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Enzo Perrin"
+  },
+  {
+    "modele": "HR-V",
+    "marque": "Honda",
+    "annee": 2001,
+    "prix": 12794,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Timéo Graf"
+  },
+  {
+    "modele": "C3",
+    "marque": "Citroën",
+    "annee": 2002,
+    "prix": 13527,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Fritz Guerra"
+  },
+  {
+    "modele": "Coupé",
+    "marque": "Mini",
+    "annee": 2003,
+    "prix": 14260,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Marc Blanc"
+  },
+  {
+    "modele": "Passat",
+    "marque": "Volkswagen",
+    "annee": 2004,
+    "prix": 14993,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Fritz Gerber"
+  },
+  {
+    "modele": "X5",
+    "marque": "BMW",
+    "annee": 2005,
+    "prix": 15726,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Cindy Piguet"
+  },
+  {
+    "modele": "C-HR",
+    "marque": "Toyota",
+    "annee": 2006,
+    "prix": 16459,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Petra Graf"
+  },
+  {
+    "modele": "Q3",
+    "marque": "Audi",
+    "annee": 2007,
+    "prix": 17192,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Mathis Frei"
+  },
+  {
+    "modele": "GLA",
+    "marque": "Mercedes-Benz",
+    "annee": 2008,
+    "prix": 17925,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Bruno Martin"
+  },
+  {
+    "modele": "Scénic",
+    "marque": "Renault",
+    "annee": 2009,
+    "prix": 18658,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Noah Huber"
+  },
+  {
+    "modele": "508",
+    "marque": "Peugeot",
+    "annee": 2010,
+    "prix": 19391,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Claudia Schneider"
+  },
+  {
+    "modele": "Puma",
+    "marque": "Ford",
+    "annee": 2011,
+    "prix": 20124,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Andrea Voisin"
+  },
+  {
+    "modele": "Kamiq",
+    "marque": "Skoda",
+    "annee": 2012,
+    "prix": 20857,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Andrea Villa"
+  },
+  {
+    "modele": "Panda",
+    "marque": "Fiat",
+    "annee": 2013,
+    "prix": 21590,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Yann Lambert"
+  },
+  {
+    "modele": "Corsa",
+    "marque": "Opel",
+    "annee": 2014,
+    "prix": 22323,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nicolas Marti"
+  },
+  {
+    "modele": "Arona",
+    "marque": "Seat",
+    "annee": 2015,
+    "prix": 23056,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Ahmed Conti"
+  },
+  {
+    "modele": "S60",
+    "marque": "Volvo",
+    "annee": 2016,
+    "prix": 23789,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Léa Serra"
+  },
+  {
+    "modele": "Mazda3",
+    "marque": "Mazda",
+    "annee": 2017,
+    "prix": 24522,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Claudia Huber"
+  },
+  {
+    "modele": "Tucson",
+    "marque": "Hyundai",
+    "annee": 2018,
+    "prix": 25255,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jonas Roth"
+  },
+  {
+    "modele": "Niro",
+    "marque": "Kia",
+    "annee": 2019,
+    "prix": 25988,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Regula Wenger"
+  },
+  {
+    "modele": "X-Trail",
+    "marque": "Nissan",
+    "annee": 2020,
+    "prix": 26721,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jade Marino"
+  },
+  {
+    "modele": "HR-V",
+    "marque": "Honda",
+    "annee": 2021,
+    "prix": 27454,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Yves Rossier"
+  },
+  {
+    "modele": "C4",
+    "marque": "Citroën",
+    "annee": 2022,
+    "prix": 28187,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Léon Baumann"
+  },
+  {
+    "modele": "Cooper",
+    "marque": "Mini",
+    "annee": 2023,
+    "prix": 28920,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Vanessa Weber"
+  },
+  {
+    "modele": "Tiguan",
+    "marque": "Volkswagen",
+    "annee": 2024,
+    "prix": 29653,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nicolas Vogel"
+  },
+  {
+    "modele": "X1",
+    "marque": "BMW",
+    "annee": 2025,
+    "prix": 30386,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Enzo Girard"
+  },
+  {
+    "modele": "Corolla",
+    "marque": "Toyota",
+    "annee": 2026,
+    "prix": 31119,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "David Huber"
+  },
+  {
+    "modele": "Q3",
+    "marque": "Audi",
+    "annee": 2000,
+    "prix": 31852,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Monika Zimmermann"
+  },
+  {
+    "modele": "Classe C",
+    "marque": "Mercedes-Benz",
+    "annee": 2001,
+    "prix": 32585,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Yves Schneider"
+  },
+  {
+    "modele": "Captur",
+    "marque": "Renault",
+    "annee": 2002,
+    "prix": 33318,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Claudia Graf"
+  },
+  {
+    "modele": "2008",
+    "marque": "Peugeot",
+    "annee": 2003,
+    "prix": 34051,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Ahmed Wenger"
+  },
+  {
+    "modele": "Puma",
+    "marque": "Ford",
+    "annee": 2004,
+    "prix": 34784,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Regula Rossier"
+  },
+  {
+    "modele": "Kamiq",
+    "marque": "Skoda",
+    "annee": 2005,
+    "prix": 35517,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Chloé Rossier"
+  },
+  {
+    "modele": "Punto",
+    "marque": "Fiat",
+    "annee": 2006,
+    "prix": 36250,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Andrea Frei"
+  },
+  {
+    "modele": "Mokka",
+    "marque": "Opel",
+    "annee": 2007,
+    "prix": 36983,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Simon Graf"
+  },
+  {
+    "modele": "Tarraco",
+    "marque": "Seat",
+    "annee": 2008,
+    "prix": 37716,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Cindy Serra"
+  },
+  {
+    "modele": "XC40",
+    "marque": "Volvo",
+    "annee": 2009,
+    "prix": 38449,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Kevin Kunz"
+  },
+  {
+    "modele": "MX-5",
+    "marque": "Mazda",
+    "annee": 2010,
+    "prix": 39182,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Laura Villa"
+  },
+  {
+    "modele": "i20",
+    "marque": "Hyundai",
+    "annee": 2011,
+    "prix": 39915,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Anna Gerber"
+  },
+  {
+    "modele": "Picanto",
+    "marque": "Kia",
+    "annee": 2012,
+    "prix": 40648,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Thomas Marti"
+  },
+  {
+    "modele": "Qashqai",
+    "marque": "Nissan",
+    "annee": 2013,
+    "prix": 41381,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Sarah Gerber"
+  },
+  {
+    "modele": "HR-V",
+    "marque": "Honda",
+    "annee": 2014,
+    "prix": 42114,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Ahmed Currat"
+  },
+  {
+    "modele": "C5 Aircross",
+    "marque": "Citroën",
+    "annee": 2015,
+    "prix": 42847,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Elena Serra"
+  },
+  {
+    "modele": "Coupé",
+    "marque": "Mini",
+    "annee": 2016,
+    "prix": 43580,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Anna Ammann"
+  },
+  {
+    "modele": "Polo",
+    "marque": "Volkswagen",
+    "annee": 2017,
+    "prix": 44313,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jonas Zimmermann"
+  },
+  {
+    "modele": "X3",
+    "marque": "BMW",
+    "annee": 2018,
+    "prix": 45046,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Dupont"
+  },
+  {
+    "modele": "Aygo",
+    "marque": "Toyota",
+    "annee": 2019,
+    "prix": 45779,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Regula Girard"
+  },
+  {
+    "modele": "Q3",
+    "marque": "Audi",
+    "annee": 2020,
+    "prix": 46512,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Hans Keller"
+  },
+  {
+    "modele": "Classe A",
+    "marque": "Mercedes-Benz",
+    "annee": 2021,
+    "prix": 47245,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Enzo Morel"
+  },
+  {
+    "modele": "Clio",
+    "marque": "Renault",
+    "annee": 2022,
+    "prix": 47978,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Nicolas Lambert"
+  },
+  {
+    "modele": "2008",
+    "marque": "Peugeot",
+    "annee": 2023,
+    "prix": 48711,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Michael Rochat"
+  },
+  {
+    "modele": "Focus",
+    "marque": "Ford",
+    "annee": 2024,
+    "prix": 49444,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Elena Weber"
+  },
+  {
+    "modele": "Karoq",
+    "marque": "Skoda",
+    "annee": 2025,
+    "prix": 50177,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Camille Testa"
+  },
+  {
+    "modele": "Panda",
+    "marque": "Fiat",
+    "annee": 2026,
+    "prix": 50910,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Léon Marino"
+  },
+  {
+    "modele": "Mokka",
+    "marque": "Opel",
+    "annee": 2000,
+    "prix": 51643,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Vanessa Dupont"
+  },
+  {
+    "modele": "Tarraco",
+    "marque": "Seat",
+    "annee": 2001,
+    "prix": 52376,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Camille Kunz"
+  },
+  {
+    "modele": "XC90",
+    "marque": "Volvo",
+    "annee": 2002,
+    "prix": 53109,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Giulia Rochat"
+  },
+  {
+    "modele": "CX-5",
+    "marque": "Mazda",
+    "annee": 2003,
+    "prix": 53842,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Denis Testa"
+  },
+  {
+    "modele": "Kona",
+    "marque": "Hyundai",
+    "annee": 2004,
+    "prix": 54575,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nina Favre"
+  },
+  {
+    "modele": "Niro",
+    "marque": "Kia",
+    "annee": 2005,
+    "prix": 55308,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Mathis Widmer"
+  },
+  {
+    "modele": "Juke",
+    "marque": "Nissan",
+    "annee": 2006,
+    "prix": 56041,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Lucas Moser"
+  },
+  {
+    "modele": "HR-V",
+    "marque": "Honda",
+    "annee": 2007,
+    "prix": 56774,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Silvia Marchetti"
+  },
+  {
+    "modele": "Berlingo",
+    "marque": "Citroën",
+    "annee": 2008,
+    "prix": 57507,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Thomas Widmer"
+  },
+  {
+    "modele": "Clubman",
+    "marque": "Mini",
+    "annee": 2009,
+    "prix": 58240,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Silvia Costa"
+  },
+  {
+    "modele": "Passat",
+    "marque": "Volkswagen",
+    "annee": 2010,
+    "prix": 58973,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Werner Fontana"
+  },
+  {
+    "modele": "X3",
+    "marque": "BMW",
+    "annee": 2011,
+    "prix": 59706,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Timéo Rochat"
+  },
+  {
+    "modele": "RAV4",
+    "marque": "Toyota",
+    "annee": 2012,
+    "prix": 60439,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Stefan Zimmermann"
+  },
+  {
+    "modele": "A4",
+    "marque": "Audi",
+    "annee": 2013,
+    "prix": 61172,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Lucas Bianchi"
+  },
+  {
+    "modele": "Classe E",
+    "marque": "Mercedes-Benz",
+    "annee": 2014,
+    "prix": 61905,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Giulia Huber"
+  },
+  {
+    "modele": "Mégane",
+    "marque": "Renault",
+    "annee": 2015,
+    "prix": 62638,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Bruno Keller"
+  },
+  {
+    "modele": "208",
+    "marque": "Peugeot",
+    "annee": 2016,
+    "prix": 63371,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Yves Meyer"
+  },
+  {
+    "modele": "Focus",
+    "marque": "Ford",
+    "annee": 2017,
+    "prix": 64104,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Mathis Wenger"
+  },
+  {
+    "modele": "Kamiq",
+    "marque": "Skoda",
+    "annee": 2018,
+    "prix": 64837,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Chloé Fontaine"
+  },
+  {
+    "modele": "500",
+    "marque": "Fiat",
+    "annee": 2019,
+    "prix": 65570,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Piguet"
+  },
+  {
+    "modele": "Crossland",
+    "marque": "Opel",
+    "annee": 2020,
+    "prix": 66303,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Alice Weber"
+  },
+  {
+    "modele": "Leon",
+    "marque": "Seat",
+    "annee": 2021,
+    "prix": 67036,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Claudia Currat"
+  },
+  {
+    "modele": "XC60",
+    "marque": "Volvo",
+    "annee": 2022,
+    "prix": 67769,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Alice Favre"
+  },
+  {
+    "modele": "Mazda3",
+    "marque": "Mazda",
+    "annee": 2023,
+    "prix": 68502,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Elisa Widmer"
+  },
+  {
+    "modele": "Tucson",
+    "marque": "Hyundai",
+    "annee": 2024,
+    "prix": 69235,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jonas Guerra"
+  },
+  {
+    "modele": "Ceed",
+    "marque": "Kia",
+    "annee": 2025,
+    "prix": 69968,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Marc Stalder"
+  },
+  {
+    "modele": "X-Trail",
+    "marque": "Nissan",
+    "annee": 2026,
+    "prix": 70701,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Fabio Meyer"
+  },
+  {
+    "modele": "Accord",
+    "marque": "Honda",
+    "annee": 2000,
+    "prix": 71434,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Marino"
+  },
+  {
+    "modele": "Berlingo",
+    "marque": "Citroën",
+    "annee": 2001,
+    "prix": 72167,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Thomas Blanc"
+  },
+  {
+    "modele": "Clubman",
+    "marque": "Mini",
+    "annee": 2002,
+    "prix": 72900,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Elena Girard"
+  },
+  {
+    "modele": "Golf",
+    "marque": "Volkswagen",
+    "annee": 2003,
+    "prix": 73633,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Anna Meyer"
+  },
+  {
+    "modele": "Série 3",
+    "marque": "BMW",
+    "annee": 2004,
+    "prix": 74366,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Julien Wyss"
+  },
+  {
+    "modele": "RAV4",
+    "marque": "Toyota",
+    "annee": 2005,
+    "prix": 75099,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Elena Moser"
+  },
+  {
+    "modele": "A3",
+    "marque": "Audi",
+    "annee": 2006,
+    "prix": 75832,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Enzo Steiner"
+  },
+  {
+    "modele": "Classe E",
+    "marque": "Mercedes-Benz",
+    "annee": 2007,
+    "prix": 76565,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Silvia Schneider"
+  },
+  {
+    "modele": "Mégane",
+    "marque": "Renault",
+    "annee": 2008,
+    "prix": 77298,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Wyss"
+  },
+  {
+    "modele": "2008",
+    "marque": "Peugeot",
+    "annee": 2009,
+    "prix": 78031,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Pauline Conti"
+  },
+  {
+    "modele": "Fiesta",
+    "marque": "Ford",
+    "annee": 2010,
+    "prix": 78764,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Emma Costa"
+  },
+  {
+    "modele": "Superb",
+    "marque": "Skoda",
+    "annee": 2011,
+    "prix": 79497,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Werner Schmid"
+  },
+  {
+    "modele": "Panda",
+    "marque": "Fiat",
+    "annee": 2012,
+    "prix": 80230,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Julien Huber"
+  },
+  {
+    "modele": "Mokka",
+    "marque": "Opel",
+    "annee": 2013,
+    "prix": 80963,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Camille Zimmermann"
+  },
+  {
+    "modele": "Ibiza",
+    "marque": "Seat",
+    "annee": 2014,
+    "prix": 81696,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Marco Villa"
+  },
+  {
+    "modele": "XC40",
+    "marque": "Volvo",
+    "annee": 2015,
+    "prix": 82429,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Julien Marchetti"
+  },
+  {
+    "modele": "MX-5",
+    "marque": "Mazda",
+    "annee": 2016,
+    "prix": 83162,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Nathan Gasser"
+  },
+  {
+    "modele": "i30",
+    "marque": "Hyundai",
+    "annee": 2017,
+    "prix": 83895,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nina Ammann"
+  },
+  {
+    "modele": "Rio",
+    "marque": "Kia",
+    "annee": 2018,
+    "prix": 84628,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Thomas Golay"
+  },
+  {
+    "modele": "Leaf",
+    "marque": "Nissan",
+    "annee": 2019,
+    "prix": 85361,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Enzo Perrin"
+  },
+  {
+    "modele": "Civic",
+    "marque": "Honda",
+    "annee": 2020,
+    "prix": 86094,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Timéo Graf"
+  },
+  {
+    "modele": "C1",
+    "marque": "Citroën",
+    "annee": 2021,
+    "prix": 86827,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Fritz Guerra"
+  },
+  {
+    "modele": "Coupé",
+    "marque": "Mini",
+    "annee": 2022,
+    "prix": 87560,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Marc Blanc"
+  },
+  {
+    "modele": "Passat",
+    "marque": "Volkswagen",
+    "annee": 2023,
+    "prix": 88293,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Fritz Gerber"
+  },
+  {
+    "modele": "X3",
+    "marque": "BMW",
+    "annee": 2024,
+    "prix": 89026,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Cindy Piguet"
+  },
+  {
+    "modele": "Aygo",
+    "marque": "Toyota",
+    "annee": 2025,
+    "prix": 89759,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Petra Graf"
+  },
+  {
+    "modele": "Q3",
+    "marque": "Audi",
+    "annee": 2026,
+    "prix": 90492,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Mathis Frei"
+  },
+  {
+    "modele": "Classe E",
+    "marque": "Mercedes-Benz",
+    "annee": 2000,
+    "prix": 91225,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Bruno Martin"
+  },
+  {
+    "modele": "Mégane",
+    "marque": "Renault",
+    "annee": 2001,
+    "prix": 91958,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Noah Huber"
+  },
+  {
+    "modele": "208",
+    "marque": "Peugeot",
+    "annee": 2002,
+    "prix": 92691,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Claudia Schneider"
+  },
+  {
+    "modele": "Puma",
+    "marque": "Ford",
+    "annee": 2003,
+    "prix": 93424,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Andrea Voisin"
+  },
+  {
+    "modele": "Karoq",
+    "marque": "Skoda",
+    "annee": 2004,
+    "prix": 94157,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Andrea Villa"
+  },
+  {
+    "modele": "500",
+    "marque": "Fiat",
+    "annee": 2005,
+    "prix": 94890,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Yann Lambert"
+  },
+  {
+    "modele": "Corsa",
+    "marque": "Opel",
+    "annee": 2006,
+    "prix": 95623,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nicolas Marti"
+  },
+  {
+    "modele": "Ateca",
+    "marque": "Seat",
+    "annee": 2007,
+    "prix": 96356,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Ahmed Conti"
+  },
+  {
+    "modele": "S60",
+    "marque": "Volvo",
+    "annee": 2008,
+    "prix": 97089,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Léa Serra"
+  },
+  {
+    "modele": "Mazda2",
+    "marque": "Mazda",
+    "annee": 2009,
+    "prix": 97822,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Claudia Huber"
+  },
+  {
+    "modele": "Kona",
+    "marque": "Hyundai",
+    "annee": 2010,
+    "prix": 98555,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jonas Roth"
+  },
+  {
+    "modele": "Picanto",
+    "marque": "Kia",
+    "annee": 2011,
+    "prix": 99288,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Regula Wenger"
+  },
+  {
+    "modele": "Qashqai",
+    "marque": "Nissan",
+    "annee": 2012,
+    "prix": 100021,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jade Marino"
+  },
+  {
+    "modele": "CR-V",
+    "marque": "Honda",
+    "annee": 2013,
+    "prix": 100754,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Yves Rossier"
+  },
+  {
+    "modele": "Berlingo",
+    "marque": "Citroën",
+    "annee": 2014,
+    "prix": 101487,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Léon Baumann"
+  },
+  {
+    "modele": "Clubman",
+    "marque": "Mini",
+    "annee": 2015,
+    "prix": 102220,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Vanessa Weber"
+  },
+  {
+    "modele": "Golf",
+    "marque": "Volkswagen",
+    "annee": 2016,
+    "prix": 102953,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nicolas Vogel"
+  },
+  {
+    "modele": "Série 3",
+    "marque": "BMW",
+    "annee": 2017,
+    "prix": 103686,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Enzo Girard"
+  },
+  {
+    "modele": "Yaris",
+    "marque": "Toyota",
+    "annee": 2018,
+    "prix": 104419,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "David Huber"
+  },
+  {
+    "modele": "Q5",
+    "marque": "Audi",
+    "annee": 2019,
+    "prix": 105152,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Monika Zimmermann"
+  },
+  {
+    "modele": "GLA",
+    "marque": "Mercedes-Benz",
+    "annee": 2020,
+    "prix": 105885,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Yves Schneider"
+  },
+  {
+    "modele": "Twingo",
+    "marque": "Renault",
+    "annee": 2021,
+    "prix": 106618,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Claudia Graf"
+  },
+  {
+    "modele": "508",
+    "marque": "Peugeot",
+    "annee": 2022,
+    "prix": 107351,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Ahmed Wenger"
+  },
+  {
+    "modele": "Mustang",
+    "marque": "Ford",
+    "annee": 2023,
+    "prix": 108084,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Regula Rossier"
+  },
+  {
+    "modele": "Octavia",
+    "marque": "Skoda",
+    "annee": 2024,
+    "prix": 108817,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Chloé Rossier"
+  },
+  {
+    "modele": "Punto",
+    "marque": "Fiat",
+    "annee": 2025,
+    "prix": 109550,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Andrea Frei"
+  },
+  {
+    "modele": "Insignia",
+    "marque": "Opel",
+    "annee": 2026,
+    "prix": 110283,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Simon Graf"
+  },
+  {
+    "modele": "Ateca",
+    "marque": "Seat",
+    "annee": 2000,
+    "prix": 111016,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Cindy Serra"
+  },
+  {
+    "modele": "S60",
+    "marque": "Volvo",
+    "annee": 2001,
+    "prix": 111749,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Kevin Kunz"
+  },
+  {
+    "modele": "CX-3",
+    "marque": "Mazda",
+    "annee": 2002,
+    "prix": 112482,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Laura Villa"
+  },
+  {
+    "modele": "Kona",
+    "marque": "Hyundai",
+    "annee": 2003,
+    "prix": 113215,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Anna Gerber"
+  },
+  {
+    "modele": "Sportage",
+    "marque": "Kia",
+    "annee": 2004,
+    "prix": 113948,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Thomas Marti"
+  },
+  {
+    "modele": "Juke",
+    "marque": "Nissan",
+    "annee": 2005,
+    "prix": 114681,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Sarah Gerber"
+  },
+  {
+    "modele": "Accord",
+    "marque": "Honda",
+    "annee": 2006,
+    "prix": 115414,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Ahmed Currat"
+  },
+  {
+    "modele": "Berlingo",
+    "marque": "Citroën",
+    "annee": 2007,
+    "prix": 116147,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Elena Serra"
+  },
+  {
+    "modele": "Cooper",
+    "marque": "Mini",
+    "annee": 2008,
+    "prix": 116880,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Anna Ammann"
+  },
+  {
+    "modele": "T-Roc",
+    "marque": "Volkswagen",
+    "annee": 2009,
+    "prix": 117613,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jonas Zimmermann"
+  },
+  {
+    "modele": "Série 1",
+    "marque": "BMW",
+    "annee": 2010,
+    "prix": 118346,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Dupont"
+  },
+  {
+    "modele": "Corolla",
+    "marque": "Toyota",
+    "annee": 2011,
+    "prix": 119079,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Regula Girard"
+  },
+  {
+    "modele": "A3",
+    "marque": "Audi",
+    "annee": 2012,
+    "prix": 119812,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Hans Keller"
+  },
+  {
+    "modele": "Classe E",
+    "marque": "Mercedes-Benz",
+    "annee": 2013,
+    "prix": 120545,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Enzo Morel"
+  },
+  {
+    "modele": "Clio",
+    "marque": "Renault",
+    "annee": 2014,
+    "prix": 121278,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Nicolas Lambert"
+  },
+  {
+    "modele": "308",
+    "marque": "Peugeot",
+    "annee": 2015,
+    "prix": 122011,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Michael Rochat"
+  },
+  {
+    "modele": "Focus",
+    "marque": "Ford",
+    "annee": 2016,
+    "prix": 122744,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Elena Weber"
+  },
+  {
+    "modele": "Octavia",
+    "marque": "Skoda",
+    "annee": 2017,
+    "prix": 123477,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Camille Testa"
+  },
+  {
+    "modele": "Punto",
+    "marque": "Fiat",
+    "annee": 2018,
+    "prix": 124210,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Léon Marino"
+  },
+  {
+    "modele": "Corsa",
+    "marque": "Opel",
+    "annee": 2019,
+    "prix": 124943,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Vanessa Dupont"
+  },
+  {
+    "modele": "Leon",
+    "marque": "Seat",
+    "annee": 2020,
+    "prix": 125676,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Camille Kunz"
+  },
+  {
+    "modele": "XC40",
+    "marque": "Volvo",
+    "annee": 2021,
+    "prix": 126409,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Giulia Rochat"
+  },
+  {
+    "modele": "CX-5",
+    "marque": "Mazda",
+    "annee": 2022,
+    "prix": 127142,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Denis Testa"
+  },
+  {
+    "modele": "Tucson",
+    "marque": "Hyundai",
+    "annee": 2023,
+    "prix": 127875,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nina Favre"
+  },
+  {
+    "modele": "Niro",
+    "marque": "Kia",
+    "annee": 2024,
+    "prix": 128608,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Mathis Widmer"
+  },
+  {
+    "modele": "Leaf",
+    "marque": "Nissan",
+    "annee": 2025,
+    "prix": 129341,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Lucas Moser"
+  },
+  {
+    "modele": "Jazz",
+    "marque": "Honda",
+    "annee": 2026,
+    "prix": 130074,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Silvia Marchetti"
+  },
+  {
+    "modele": "C1",
+    "marque": "Citroën",
+    "annee": 2000,
+    "prix": 130807,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Thomas Widmer"
+  },
+  {
+    "modele": "Countryman",
+    "marque": "Mini",
+    "annee": 2001,
+    "prix": 131540,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Silvia Costa"
+  },
+  {
+    "modele": "Passat",
+    "marque": "Volkswagen",
+    "annee": 2002,
+    "prix": 132273,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Werner Fontana"
+  },
+  {
+    "modele": "X1",
+    "marque": "BMW",
+    "annee": 2003,
+    "prix": 133006,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Timéo Rochat"
+  },
+  {
+    "modele": "Aygo",
+    "marque": "Toyota",
+    "annee": 2004,
+    "prix": 133739,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Stefan Zimmermann"
+  },
+  {
+    "modele": "A1",
+    "marque": "Audi",
+    "annee": 2005,
+    "prix": 134472,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Lucas Bianchi"
+  },
+  {
+    "modele": "Classe C",
+    "marque": "Mercedes-Benz",
+    "annee": 2006,
+    "prix": 135205,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Giulia Huber"
+  },
+  {
+    "modele": "Captur",
+    "marque": "Renault",
+    "annee": 2007,
+    "prix": 135938,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Bruno Keller"
+  },
+  {
+    "modele": "508",
+    "marque": "Peugeot",
+    "annee": 2008,
+    "prix": 136671,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Yves Meyer"
+  },
+  {
+    "modele": "Focus",
+    "marque": "Ford",
+    "annee": 2009,
+    "prix": 137404,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Mathis Wenger"
+  },
+  {
+    "modele": "Karoq",
+    "marque": "Skoda",
+    "annee": 2010,
+    "prix": 138137,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Chloé Fontaine"
+  },
+  {
+    "modele": "500",
+    "marque": "Fiat",
+    "annee": 2011,
+    "prix": 138870,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Piguet"
+  },
+  {
+    "modele": "Crossland",
+    "marque": "Opel",
+    "annee": 2012,
+    "prix": 139603,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Alice Weber"
+  },
+  {
+    "modele": "Leon",
+    "marque": "Seat",
+    "annee": 2013,
+    "prix": 140336,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Claudia Currat"
+  },
+  {
+    "modele": "XC60",
+    "marque": "Volvo",
+    "annee": 2014,
+    "prix": 141069,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Alice Favre"
+  },
+  {
+    "modele": "CX-3",
+    "marque": "Mazda",
+    "annee": 2015,
+    "prix": 141802,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Elisa Widmer"
+  },
+  {
+    "modele": "i20",
+    "marque": "Hyundai",
+    "annee": 2016,
+    "prix": 142535,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jonas Guerra"
+  },
+  {
+    "modele": "Picanto",
+    "marque": "Kia",
+    "annee": 2017,
+    "prix": 143268,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Marc Stalder"
+  },
+  {
+    "modele": "Micra",
+    "marque": "Nissan",
+    "annee": 2018,
+    "prix": 144001,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Fabio Meyer"
+  },
+  {
+    "modele": "CR-V",
+    "marque": "Honda",
+    "annee": 2019,
+    "prix": 144734,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Marino"
+  },
+  {
+    "modele": "C4",
+    "marque": "Citroën",
+    "annee": 2020,
+    "prix": 145467,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Thomas Blanc"
+  },
+  {
+    "modele": "Coupé",
+    "marque": "Mini",
+    "annee": 2021,
+    "prix": 146200,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Elena Girard"
+  },
+  {
+    "modele": "T-Roc",
+    "marque": "Volkswagen",
+    "annee": 2022,
+    "prix": 146933,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Anna Meyer"
+  },
+  {
+    "modele": "X1",
+    "marque": "BMW",
+    "annee": 2023,
+    "prix": 147666,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Julien Wyss"
+  },
+  {
+    "modele": "Aygo",
+    "marque": "Toyota",
+    "annee": 2024,
+    "prix": 148399,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Elena Moser"
+  },
+  {
+    "modele": "A1",
+    "marque": "Audi",
+    "annee": 2025,
+    "prix": 149132,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Enzo Steiner"
+  },
+  {
+    "modele": "GLA",
+    "marque": "Mercedes-Benz",
+    "annee": 2026,
+    "prix": 149865,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Silvia Schneider"
+  },
+  {
+    "modele": "Captur",
+    "marque": "Renault",
+    "annee": 2000,
+    "prix": 150598,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Kevin Wyss"
+  },
+  {
+    "modele": "3008",
+    "marque": "Peugeot",
+    "annee": 2001,
+    "prix": 151331,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Pauline Conti"
+  },
+  {
+    "modele": "Puma",
+    "marque": "Ford",
+    "annee": 2002,
+    "prix": 152064,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Emma Costa"
+  },
+  {
+    "modele": "Superb",
+    "marque": "Skoda",
+    "annee": 2003,
+    "prix": 152797,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Werner Schmid"
+  },
+  {
+    "modele": "Punto",
+    "marque": "Fiat",
+    "annee": 2004,
+    "prix": 3530,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Julien Huber"
+  },
+  {
+    "modele": "Insignia",
+    "marque": "Opel",
+    "annee": 2005,
+    "prix": 4263,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Camille Zimmermann"
+  },
+  {
+    "modele": "Ateca",
+    "marque": "Seat",
+    "annee": 2006,
+    "prix": 4996,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Marco Villa"
+  },
+  {
+    "modele": "XC40",
+    "marque": "Volvo",
+    "annee": 2007,
+    "prix": 5729,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Julien Marchetti"
+  },
+  {
+    "modele": "MX-5",
+    "marque": "Mazda",
+    "annee": 2008,
+    "prix": 6462,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Nathan Gasser"
+  },
+  {
+    "modele": "i10",
+    "marque": "Hyundai",
+    "annee": 2009,
+    "prix": 7195,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nina Ammann"
+  },
+  {
+    "modele": "Sportage",
+    "marque": "Kia",
+    "annee": 2010,
+    "prix": 7928,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Thomas Golay"
+  },
+  {
+    "modele": "Juke",
+    "marque": "Nissan",
+    "annee": 2011,
+    "prix": 8661,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Enzo Perrin"
+  },
+  {
+    "modele": "Accord",
+    "marque": "Honda",
+    "annee": 2012,
+    "prix": 9394,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Timéo Graf"
+  },
+  {
+    "modele": "C4",
+    "marque": "Citroën",
+    "annee": 2013,
+    "prix": 10127,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Fritz Guerra"
+  },
+  {
+    "modele": "Cooper",
+    "marque": "Mini",
+    "annee": 2014,
+    "prix": 10860,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Marc Blanc"
+  },
+  {
+    "modele": "Golf",
+    "marque": "Volkswagen",
+    "annee": 2015,
+    "prix": 11593,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Fritz Gerber"
+  },
+  {
+    "modele": "Série 3",
+    "marque": "BMW",
+    "annee": 2016,
+    "prix": 12326,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Cindy Piguet"
+  },
+  {
+    "modele": "C-HR",
+    "marque": "Toyota",
+    "annee": 2017,
+    "prix": 13059,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Petra Graf"
+  },
+  {
+    "modele": "Q5",
+    "marque": "Audi",
+    "annee": 2018,
+    "prix": 13792,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Mathis Frei"
+  },
+  {
+    "modele": "Classe A",
+    "marque": "Mercedes-Benz",
+    "annee": 2019,
+    "prix": 14525,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Bruno Martin"
+  },
+  {
+    "modele": "Captur",
+    "marque": "Renault",
+    "annee": 2020,
+    "prix": 15258,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Noah Huber"
+  },
+  {
+    "modele": "508",
+    "marque": "Peugeot",
+    "annee": 2021,
+    "prix": 15991,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Claudia Schneider"
+  },
+  {
+    "modele": "Fiesta",
+    "marque": "Ford",
+    "annee": 2022,
+    "prix": 16724,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Andrea Voisin"
+  },
+  {
+    "modele": "Octavia",
+    "marque": "Skoda",
+    "annee": 2023,
+    "prix": 17457,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Andrea Villa"
+  },
+  {
+    "modele": "500X",
+    "marque": "Fiat",
+    "annee": 2024,
+    "prix": 18190,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Yann Lambert"
+  },
+  {
+    "modele": "Crossland",
+    "marque": "Opel",
+    "annee": 2025,
+    "prix": 18923,
+    "motorisation": "Essence",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Nicolas Marti"
+  },
+  {
+    "modele": "Ateca",
+    "marque": "Seat",
+    "annee": 2026,
+    "prix": 19656,
+    "motorisation": "Diesel",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Ahmed Conti"
+  },
+  {
+    "modele": "XC90",
+    "marque": "Volvo",
+    "annee": 2000,
+    "prix": 20389,
+    "motorisation": "Hybride",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Léa Serra"
+  },
+  {
+    "modele": "Mazda3",
+    "marque": "Mazda",
+    "annee": 2001,
+    "prix": 21122,
+    "motorisation": "Électrique",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Claudia Huber"
+  },
+  {
+    "modele": "Kona",
+    "marque": "Hyundai",
+    "annee": 2002,
+    "prix": 21855,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jonas Roth"
+  },
+  {
+    "modele": "Sportage",
+    "marque": "Kia",
+    "annee": 2003,
+    "prix": 22588,
+    "motorisation": "Essence",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Regula Wenger"
+  },
+  {
+    "modele": "Leaf",
+    "marque": "Nissan",
+    "annee": 2004,
+    "prix": 23321,
+    "motorisation": "Diesel",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Jade Marino"
+  },
+  {
+    "modele": "Civic",
+    "marque": "Honda",
+    "annee": 2005,
+    "prix": 24054,
+    "motorisation": "Hybride",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Yves Rossier"
+  },
+  {
+    "modele": "C5 Aircross",
+    "marque": "Citroën",
+    "annee": 2006,
+    "prix": 24787,
+    "motorisation": "Électrique",
+    "boite": "Manuelle",
+    "portes": 3,
+    "vendeur": "Léon Baumann"
+  },
+  {
+    "modele": "Clubman",
+    "marque": "Mini",
+    "annee": 2007,
+    "prix": 25520,
+    "motorisation": "Hybride rechargeable",
+    "boite": "Automatique",
+    "portes": 5,
+    "vendeur": "Vanessa Weber"
+  }
+]
+  </script>
+
+  <script>
+    // ===== Vraies donnees, extraites directement du script SQL de peuplement =====
+    // (memes 20 marques, memes 440 voitures, memes vendeurs que dans la base)
+    const voitures = JSON.parse(document.getElementById('donnees-voitures').textContent);
+    voitures.forEach(function(v, i) { v.id = i + 1; });
+    const MARQUES = [...new Set(voitures.map(function(v) { return v.marque; }))].sort();
+
+    // ===== Remplir le menu deroulant Marque =====
+    const selectMarque = document.getElementById("fMarque");
+    MARQUES.forEach(function(m) {
+      const option = document.createElement("option");
+      option.value = m;
+      option.textContent = m;
+      selectMarque.appendChild(option);
+    });
+
+    // ===== Chaque filtre relance filtrer() des qu'on le change =====
+    const idsFiltres = ["fMarque","fPrixMin","fPrixMax","fAnneeMin","fAnneeMax","fMotorisation","fBoite","fPortes"];
+    idsFiltres.forEach(function(id) {
+      document.getElementById(id).addEventListener("input", filtrer);
+      document.getElementById(id).addEventListener("change", filtrer);
+    });
+
+    function filtrer() {
+      // 1. Lire la valeur de chaque filtre
+      const marque = document.getElementById("fMarque").value;
+      const prixMin = document.getElementById("fPrixMin").value;
+      const prixMax = document.getElementById("fPrixMax").value;
+      const anneeMin = document.getElementById("fAnneeMin").value;
+      const anneeMax = document.getElementById("fAnneeMax").value;
+      const motorisation = document.getElementById("fMotorisation").value;
+      const boite = document.getElementById("fBoite").value;
+      const portes = document.getElementById("fPortes").value;
+
+      // 2. Filtrer le tableau JS (comme avant, avec plus de conditions)
+      const resultat = voitures.filter(function(v) {
+        if (marque && v.marque !== marque) return false;
+        if (prixMin && v.prix < Number(prixMin)) return false;
+        if (prixMax && v.prix > Number(prixMax)) return false;
+        if (anneeMin && v.annee < Number(anneeMin)) return false;
+        if (anneeMax && v.annee > Number(anneeMax)) return false;
+        if (motorisation && v.motorisation !== motorisation) return false;
+        if (boite && v.boite !== boite) return false;
+        if (portes && String(v.portes) !== portes) return false;
+        return true;
+      });
+
+      // 3. Afficher le tableau de resultats
+      document.getElementById("compteur").textContent =
+        resultat.length + " / " + voitures.length + " voitures";
+
+      const corpsTable = document.getElementById("resultats");
+      corpsTable.innerHTML = "";
+      resultat.forEach(function(v) {
+        corpsTable.innerHTML += "<tr><td>" + v.modele + "</td><td>" + v.marque + "</td><td>" +
+          v.annee + "</td><td>" + v.prix + " CHF</td><td>" + v.motorisation + "</td><td>" +
+          v.boite + "</td><td>" + v.portes + "</td></tr>";
+      });
+
+      // 4. Construire le texte de la requete SQL en fonction des filtres actifs
+      const conditions = [];
+      if (marque) conditions.push("m.nom_marque = '" + marque + "'");
+      if (prixMin) conditions.push("v.prix >= " + Number(prixMin));
+      if (prixMax) conditions.push("v.prix <= " + Number(prixMax));
+      if (anneeMin) conditions.push("v.annee >= " + Number(anneeMin));
+      if (anneeMax) conditions.push("v.annee <= " + Number(anneeMax));
+      if (motorisation) conditions.push("v.motorisation = '" + motorisation + "'");
+      if (boite) conditions.push("v.boite_vitesse = '" + boite + "'");
+      if (portes) conditions.push("v.nb_portes = " + portes);
+
+      let sql = "SELECT v.modele, m.nom_marque, v.annee, v.prix, v.motorisation, v.boite_vitesse, v.nb_portes\n";
+      sql += "FROM t_voiture v\n";
+      sql += "JOIN t_marque m ON v.marque_fk = m.marque_id\n";
+      if (conditions.length > 0) {
+        sql += "WHERE " + conditions.join("\n  AND ") + "\n";
+      }
+      sql += "ORDER BY v.prix ASC;";
+
+      document.getElementById("sql").textContent = sql;
+    }
+
+    // ===== Copier le texte SQL dans le presse-papier =====
+    function copierSql() {
+      const texte = document.getElementById("sql").textContent;
+      navigator.clipboard.writeText(texte).then(function() {
+        document.getElementById("messageCopie").textContent = " Copié !";
+        setTimeout(function() {
+          document.getElementById("messageCopie").textContent = "";
+        }, 2000);
+      });
+    }
+
+    filtrer(); // Affiche tout au chargement
+  </script>
+
+</body>
+</html>
