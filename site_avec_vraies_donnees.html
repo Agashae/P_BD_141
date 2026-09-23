@@ -11,11 +11,18 @@
     #sql { background: #f4f4f4; padding: 10px; white-space: pre-wrap; font-family: monospace; }
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
     th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+    .chrono { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+    #affichageChrono { font-family: monospace; font-size: 24px; }
   </style>
 </head>
 <body>
 
   <h1>Catalogue de voitures</h1>
+
+  <div class="chrono">
+    <span id="affichageChrono">00:00.00</span>
+    <button id="boutonChrono" onclick="basculerChrono()">Démarrer</button>
+  </div>
 
   <div class="filtres">
     <div>
@@ -4588,6 +4595,37 @@
           document.getElementById("messageCopie").textContent = "";
         }, 2000);
       });
+    }
+
+    // ===== Chronometre : Demarrer repart de zero, Arreter fige le temps =====
+    let debutChrono = null;
+    let intervalleChrono = null;
+
+    function afficherChrono(ms) {
+      const minutes = Math.floor(ms / 60000);
+      const secondes = Math.floor((ms % 60000) / 1000);
+      const centiemes = Math.floor((ms % 1000) / 10);
+      document.getElementById("affichageChrono").textContent =
+        String(minutes).padStart(2, "0") + ":" +
+        String(secondes).padStart(2, "0") + "." +
+        String(centiemes).padStart(2, "0");
+    }
+
+    function basculerChrono() {
+      const bouton = document.getElementById("boutonChrono");
+      if (intervalleChrono === null) {
+        debutChrono = Date.now();
+        afficherChrono(0);
+        intervalleChrono = setInterval(function() {
+          afficherChrono(Date.now() - debutChrono);
+        }, 10);
+        bouton.textContent = "Arrêter";
+      } else {
+        clearInterval(intervalleChrono);
+        intervalleChrono = null;
+        afficherChrono(Date.now() - debutChrono);
+        bouton.textContent = "Démarrer";
+      }
     }
 
     filtrer(); // Affiche tout au chargement
