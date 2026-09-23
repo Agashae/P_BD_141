@@ -80,6 +80,11 @@
     </div>
   </div>
 
+  <h2>Requête SQL à copier dans SSMS</h2>
+  <div id="sql"></div>
+  <button onclick="copierSql()">Copier la requête</button>
+  <span id="messageCopie"></span>
+
   <p><strong id="compteur">Génération des voitures...</strong> <span id="infoAffichage"></span></p>
   <table id="tableauResultats">
     <thead>
@@ -87,11 +92,6 @@
     </thead>
     <tbody id="resultats"></tbody>
   </table>
-
-  <h2>Requête SQL à copier dans SSMS</h2>
-  <div id="sql"></div>
-  <button onclick="copierSql()">Copier la requête</button>
-  <span id="messageCopie"></span>
 
   <script>
     // ===== Generation de 10'000'000 de voitures =====
