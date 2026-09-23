@@ -94,11 +94,12 @@
   <span id="messageCopie"></span>
 
   <script>
-    // ===== Generation de 1'000'000 de voitures =====
+    // ===== Generation de 10'000'000 de voitures =====
     // Meme logique que P_BD_141_RemplissageMax.sql et memes donnees que DatasCars.txt.
-    // (1 million de voitures ecrites en dur feraient ~150 Mo : trop gros pour GitHub,
+    // (10 millions de voitures ecrites en dur feraient ~1.5 Go : trop gros pour GitHub,
     //  donc on les genere dans le navigateur au chargement de la page.)
-    const NB_VOITURES = 1000000;
+    const NB_VOITURES = 10000000;
+    const TAILLE_ETAPE = 500000; // voitures generees entre deux mises a jour de la progression
     const ANNEE_MAX = 2026;
     const MAX_LIGNES_AFFICHEES = 200;
 
@@ -193,81 +194,104 @@
       return ((t ^ (t >>> 14)) >>> 0) & 0x7FFFFFFF; // entier positif, comme CHECKSUM(NEWID()) & 2147483647
     }
 
-    // Stockage en colonnes (tableaux types) : 1 million d'objets JS serait trop lourd en memoire
-    const vModele = new Uint16Array(NB_VOITURES);
-    const vAnnee = new Uint16Array(NB_VOITURES);
-    const vPrix = new Uint32Array(NB_VOITURES);
-    const vMotorisation = new Uint8Array(NB_VOITURES);
-    const vBoite = new Uint8Array(NB_VOITURES);
-    const vPortes = new Uint8Array(NB_VOITURES);
+    // Stockage en colonnes compactes (6 octets par voiture, ~60 Mo pour 10 millions) :
+    //   vModele = index dans MODELES, vAnnee = annee - 1960, vPrix = prix / 100,
+    //   vInfos  = motorisation (bits 0-2) + boite (bits 3-4) + (portes - 2) (bits 5-6)
+    let vModele = new Uint16Array(NB_VOITURES);
+    let vAnnee = new Uint8Array(NB_VOITURES);
+    let vPrix = new Uint16Array(NB_VOITURES);
+    let vInfos = new Uint8Array(NB_VOITURES);
+    const NB_CASES_PRIX = 350000 / 100 + 1;
+    let debutPrix; // debutPrix[p] = position de la premiere voiture a p*100 CHF, une fois triees
 
-    for (let i = 0; i < NB_VOITURES; i++) {
-      const idxModele = aleatoire() % MODELES.length;
-      const m = MODELES[idxModele];
-      const carrosserie = m[2], electrique = m[3] === 1, gamme = GAMME_MARQUE[m[0]];
-      const r1 = aleatoire(), r2 = aleatoire(), r4 = aleatoire(), r6 = aleatoire(), r7 = aleatoire(), r12 = aleatoire();
+    function genererEtape(debut, fin) {
+      for (let i = debut; i < fin; i++) {
+        const idxModele = aleatoire() % MODELES.length;
+        const m = MODELES[idxModele];
+        const carrosserie = m[2], electrique = m[3] === 1, gamme = GAMME_MARQUE[m[0]];
+        const r1 = aleatoire(), r2 = aleatoire(), r4 = aleatoire(), r6 = aleatoire(), r7 = aleatoire(), r12 = aleatoire();
 
-      // annee : electriques des 2012, 10 % d'anciennes (1960-2004), sinon 2005-aujourd'hui
-      let annee;
-      if (electrique) annee = 2012 + r1 % (ANNEE_MAX - 2011);
-      else if (r12 % 10 === 0) annee = 1960 + r1 % 45;
-      else annee = 2005 + r1 % (ANNEE_MAX - 2004);
+        // annee : electriques des 2012, 10 % d'anciennes (1960-2004), sinon 2005-aujourd'hui
+        let annee;
+        if (electrique) annee = 2012 + r1 % (ANNEE_MAX - 2011);
+        else if (r12 % 10 === 0) annee = 1960 + r1 % 45;
+        else annee = 2005 + r1 % (ANNEE_MAX - 2004);
 
-      // motorisation : pas d'hybride avant 2000
-      let motorisation;
-      if (electrique) motorisation = "Électrique";
-      else if (annee < 2000) motorisation = r2 % 3 === 0 ? "Diesel" : "Essence";
-      else if (r2 % 100 < 35) motorisation = "Essence";
-      else if (r2 % 100 < 60) motorisation = "Diesel";
-      else if (r2 % 100 < 75) motorisation = "Hybride";
-      else if (r2 % 100 < 85) motorisation = "Mild-hybride";
-      else if (r2 % 100 < 95) motorisation = "Hybride rechargeable";
-      else motorisation = "GPL";
+        // motorisation : pas d'hybride avant 2000
+        let motorisation;
+        if (electrique) motorisation = "Électrique";
+        else if (annee < 2000) motorisation = r2 % 3 === 0 ? "Diesel" : "Essence";
+        else if (r2 % 100 < 35) motorisation = "Essence";
+        else if (r2 % 100 < 60) motorisation = "Diesel";
+        else if (r2 % 100 < 75) motorisation = "Hybride";
+        else if (r2 % 100 < 85) motorisation = "Mild-hybride";
+        else if (r2 % 100 < 95) motorisation = "Hybride rechargeable";
+        else motorisation = "GPL";
 
-      // prix de base selon la gamme + devaluation (-2.5 %/an, min 25 %), arrondi a la centaine
-      let base;
-      if (gamme === 1) base = 8000 + r4 % 32001;
-      else if (gamme === 2) base = 15000 + r4 % 65001;
-      else if (gamme === 3) base = 30000 + r4 % 120001;
-      else base = 90000 + r4 % 260001;
-      const facteur = Math.max(0.25, 1 - (ANNEE_MAX - annee) * 0.025);
-      const prix = Math.max(1000, Math.round(base * facteur / 100) * 100);
+        // prix de base selon la gamme + devaluation (-2.5 %/an, min 25 %), arrondi a la centaine
+        let base;
+        if (gamme === 1) base = 8000 + r4 % 32001;
+        else if (gamme === 2) base = 15000 + r4 % 65001;
+        else if (gamme === 3) base = 30000 + r4 % 120001;
+        else base = 90000 + r4 % 260001;
+        const facteur = Math.max(0.25, 1 - (ANNEE_MAX - annee) * 0.025);
+        const prix = Math.max(1000, Math.round(base * facteur / 100) * 100);
 
-      // boite de vitesses
-      let boite;
-      if (motorisation === "Électrique") boite = "Automatique";
-      else if (annee < 1990) boite = "Manuelle";
-      else if (r6 % 10 < 4) boite = "Manuelle";
-      else if (r6 % 10 < 8) boite = "Automatique";
-      else if (r6 % 10 === 8) boite = "Semi-automatique";
-      else boite = "CVT";
+        // boite de vitesses
+        let boite;
+        if (motorisation === "Électrique") boite = "Automatique";
+        else if (annee < 1990) boite = "Manuelle";
+        else if (r6 % 10 < 4) boite = "Manuelle";
+        else if (r6 % 10 < 8) boite = "Automatique";
+        else if (r6 % 10 === 8) boite = "Semi-automatique";
+        else boite = "CVT";
 
-      // nombre de portes selon la carrosserie
-      let portes;
-      if (carrosserie === "Coupé" || carrosserie === "Cabriolet") portes = 2;
-      else if (carrosserie === "Citadine" || carrosserie === "Compacte") portes = r7 % 3 === 0 ? 3 : 5;
-      else if (carrosserie === "Berline" || carrosserie === "Pick-up") portes = 4;
-      else portes = 5;
+        // nombre de portes selon la carrosserie
+        let portes;
+        if (carrosserie === "Coupé" || carrosserie === "Cabriolet") portes = 2;
+        else if (carrosserie === "Citadine" || carrosserie === "Compacte") portes = r7 % 3 === 0 ? 3 : 5;
+        else if (carrosserie === "Berline" || carrosserie === "Pick-up") portes = 4;
+        else portes = 5;
 
-      vModele[i] = idxModele;
-      vAnnee[i] = annee;
-      vPrix[i] = prix;
-      vMotorisation[i] = MOTORISATIONS.indexOf(motorisation);
-      vBoite[i] = BOITES.indexOf(boite);
-      vPortes[i] = portes;
+        vModele[i] = idxModele;
+        vAnnee[i] = annee - 1960;
+        vPrix[i] = prix / 100;
+        vInfos[i] = MOTORISATIONS.indexOf(motorisation) | (BOITES.indexOf(boite) << 3) | ((portes - 2) << 5);
+      }
     }
 
-    // Ordre des voitures trie par prix croissant (comme le ORDER BY v.prix ASC du SQL).
+    // Range les voitures par prix croissant (comme le ORDER BY v.prix ASC du SQL).
     // Tri par comptage : les prix sont des multiples de 100, donc tres rapide.
-    const ordreParPrix = (function() {
-      const nbCases = 350000 / 100 + 1;
-      const debutCase = new Uint32Array(nbCases + 1);
-      for (let i = 0; i < NB_VOITURES; i++) debutCase[vPrix[i] / 100 + 1]++;
-      for (let c = 1; c <= nbCases; c++) debutCase[c] += debutCase[c - 1];
-      const ordre = new Uint32Array(NB_VOITURES);
-      for (let i = 0; i < NB_VOITURES; i++) ordre[debutCase[vPrix[i] / 100]++] = i;
-      return ordre;
-    })();
+    function trierParPrix() {
+      debutPrix = new Uint32Array(NB_CASES_PRIX + 1);
+      for (let i = 0; i < NB_VOITURES; i++) debutPrix[vPrix[i] + 1]++;
+      for (let c = 1; c <= NB_CASES_PRIX; c++) debutPrix[c] += debutPrix[c - 1];
+
+      function ranger(colonne) {
+        const position = debutPrix.slice();
+        const triee = new colonne.constructor(NB_VOITURES);
+        for (let i = 0; i < NB_VOITURES; i++) triee[position[vPrix[i]]++] = colonne[i];
+        return triee;
+      }
+      vModele = ranger(vModele);
+      vAnnee = ranger(vAnnee);
+      vInfos = ranger(vInfos);
+      for (let c = 0; c < NB_CASES_PRIX; c++) vPrix.fill(c, debutPrix[c], debutPrix[c + 1]);
+    }
+
+    // Generation par etapes pour que la page affiche la progression au lieu de figer
+    function generer(debut) {
+      const fin = Math.min(debut + TAILLE_ETAPE, NB_VOITURES);
+      genererEtape(debut, fin);
+      document.getElementById("compteur").textContent = "Génération des voitures... " +
+        Math.round(fin / NB_VOITURES * 100) + " %";
+      if (fin < NB_VOITURES) {
+        setTimeout(function() { generer(fin); }, 0);
+      } else {
+        trierParPrix();
+        filtrer();
+      }
+    }
 
     // ===== Remplir le menu deroulant Marque =====
     const selectMarque = document.getElementById("fMarque");
@@ -285,9 +309,10 @@
       document.getElementById(id).addEventListener("change", filtrerBientot);
     });
 
-    // Attend que la personne ait fini de taper avant de filtrer le million de voitures
+    // Attend que la personne ait fini de taper avant de filtrer les 10 millions de voitures
     let minuteurFiltre = null;
     function filtrerBientot() {
+      if (!debutPrix) return; // generation pas encore terminee (filtrer() sera appele a la fin)
       clearTimeout(minuteurFiltre);
       minuteurFiltre = setTimeout(filtrer, 200);
     }
@@ -307,28 +332,31 @@
       const idxMarque = marque ? MARQUES.indexOf(marque) : -1;
       const idxMotorisation = motorisation ? MOTORISATIONS.indexOf(motorisation) : -1;
       const idxBoite = boite ? BOITES.indexOf(boite) : -1;
-      const pMin = prixMin ? Number(prixMin) : -Infinity;
-      const pMax = prixMax ? Number(prixMax) : Infinity;
-      const aMin = anneeMin ? Number(anneeMin) : -Infinity;
-      const aMax = anneeMax ? Number(anneeMax) : Infinity;
-      const nbPortes = portes ? Number(portes) : -1;
+      const aMin = anneeMin ? Number(anneeMin) - 1960 : -Infinity;
+      const aMax = anneeMax ? Number(anneeMax) - 1960 : Infinity;
+      const idxPortes = portes ? Number(portes) - 2 : -1;
+
+      // Les voitures sont rangees par prix : on ne parcourt que la tranche de prix demandee
+      const casePrixMin = prixMin ? Math.min(Math.max(Math.ceil(Number(prixMin) / 100), 0), NB_CASES_PRIX) : 0;
+      const casePrixMax = prixMax ? Math.min(Math.max(Math.floor(Number(prixMax) / 100), -1), NB_CASES_PRIX - 1) : NB_CASES_PRIX - 1;
+      const kDebut = debutPrix[casePrixMin];
+      const kFin = casePrixMax >= casePrixMin ? debutPrix[casePrixMax + 1] : kDebut;
 
       let nbResultats = 0;
       let lignes = "";
-      for (let k = 0; k < NB_VOITURES; k++) {
-        const i = ordreParPrix[k];
-        if (idxMarque >= 0 && marqueDuModele[vModele[i]] !== idxMarque) continue;
-        if (vPrix[i] < pMin || vPrix[i] > pMax) continue;
-        if (vAnnee[i] < aMin || vAnnee[i] > aMax) continue;
-        if (idxMotorisation >= 0 && vMotorisation[i] !== idxMotorisation) continue;
-        if (idxBoite >= 0 && vBoite[i] !== idxBoite) continue;
-        if (nbPortes >= 0 && vPortes[i] !== nbPortes) continue;
+      for (let k = kDebut; k < kFin; k++) {
+        if (idxMarque >= 0 && marqueDuModele[vModele[k]] !== idxMarque) continue;
+        if (vAnnee[k] < aMin || vAnnee[k] > aMax) continue;
+        const infos = vInfos[k];
+        if (idxMotorisation >= 0 && (infos & 7) !== idxMotorisation) continue;
+        if (idxBoite >= 0 && ((infos >> 3) & 3) !== idxBoite) continue;
+        if (idxPortes >= 0 && (infos >> 5) !== idxPortes) continue;
         nbResultats++;
         if (nbResultats <= MAX_LIGNES_AFFICHEES) {
-          const m = MODELES[vModele[i]];
-          lignes += "<tr><td>" + m[1] + "</td><td>" + m[0] + "</td><td>" + vAnnee[i] + "</td><td>" +
-            vPrix[i] + " CHF</td><td>" + MOTORISATIONS[vMotorisation[i]] + "</td><td>" +
-            BOITES[vBoite[i]] + "</td><td>" + vPortes[i] + "</td></tr>";
+          const m = MODELES[vModele[k]];
+          lignes += "<tr><td>" + m[1] + "</td><td>" + m[0] + "</td><td>" + (vAnnee[k] + 1960) + "</td><td>" +
+            vPrix[k] * 100 + " CHF</td><td>" + MOTORISATIONS[infos & 7] + "</td><td>" +
+            BOITES[(infos >> 3) & 3] + "</td><td>" + ((infos >> 5) + 2) + "</td></tr>";
         }
       }
 
@@ -403,7 +431,8 @@
       }
     }
 
-    filtrer(); // Affiche tout au chargement
+    // Au chargement : genere les voitures, puis affiche tout
+    setTimeout(function() { generer(0); }, 0);
   </script>
 
 </body>
