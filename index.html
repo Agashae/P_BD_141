@@ -8,11 +8,12 @@
     .filtres { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
     .filtres > div { display: flex; flex-direction: column; }
     label { font-size: 12px; margin-bottom: 3px; }
-    #sql, #sqlDemo { background: #f4f4f4; padding: 10px; white-space: pre-wrap; font-family: monospace; }
+    #sql, #sqlDemo, #sqlInsertion { background: #f4f4f4; padding: 10px; white-space: pre-wrap; font-family: monospace; }
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
     th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
     #tempsFiltre, #tempsTotal { font-family: monospace; font-size: 20px; }
-    #resultatTotal { font-weight: bold; color: #1a7f37; }
+    #resultatTotal, #messageInsertion { font-weight: bold; color: #1a7f37; }
+    .ajoutee td { background: #fff4c2; }
   </style>
 </head>
 <body>
@@ -98,6 +99,45 @@ SELECT * FROM t_voiture WHERE voiture_id = 15000000;
 SELECT * FROM t_voiture WHERE prix = 15000;</div>
   <button onclick="copierSql('sqlDemo', 'messageCopieDemo')">Copier</button>
   <span id="messageCopieDemo"></span>
+
+  <h2>Ajouter ma voiture</h2>
+  <p>Remplis les champs puis clique sur « Ajouter ». Ta voiture apparaît sur le site (en jaune),
+    et la requête ci-dessous l'insère aussi dans la base : copie-la dans SSMS pour l'exécuter.</p>
+  <div class="filtres">
+    <div>
+      <label>Marque</label>
+      <select id="iMarque"></select>
+    </div>
+    <div>
+      <label>Modèle</label>
+      <select id="iModele"></select>
+    </div>
+    <div>
+      <label>Année</label>
+      <input type="number" id="iAnnee" value="2020">
+    </div>
+    <div>
+      <label>Prix (CHF)</label>
+      <input type="number" id="iPrix" value="25000">
+    </div>
+    <div>
+      <label>Motorisation</label>
+      <select id="iMotorisation"></select>
+    </div>
+    <div>
+      <label>Boîte</label>
+      <select id="iBoite"></select>
+    </div>
+    <div>
+      <label>Portes</label>
+      <select id="iPortes"><option>2</option><option>3</option><option>4</option><option selected>5</option></select>
+    </div>
+  </div>
+  <button onclick="ajouterVoiture()">Ajouter</button>
+  <span id="messageInsertion"></span>
+  <div id="sqlInsertion" style="margin-top: 10px;">-- Clique sur « Ajouter » pour générer la requête d'insertion</div>
+  <button onclick="copierSql('sqlInsertion', 'messageCopieInsertion')">Copier la requête</button>
+  <span id="messageCopieInsertion"></span>
 
   <p><strong id="compteur">Génération des voitures...</strong> <span id="infoAffichage"></span></p>
   <table id="tableauResultats">
@@ -317,6 +357,75 @@ SELECT * FROM t_voiture WHERE prix = 15000;</div>
       selectMarque.appendChild(option);
     });
 
+    // ===== Formulaire « Ajouter ma voiture » : remplir les menus deroulants =====
+    function remplirMenu(id, valeurs) {
+      const select = document.getElementById(id);
+      select.innerHTML = "";
+      valeurs.forEach(function(v) {
+        const option = document.createElement("option");
+        option.value = v;
+        option.textContent = v;
+        select.appendChild(option);
+      });
+    }
+    function remplirModeles() {
+      const marque = document.getElementById("iMarque").value;
+      remplirMenu("iModele", MODELES.filter(function(m) { return m[0] === marque; }).map(function(m) { return m[1]; }));
+    }
+    remplirMenu("iMarque", MARQUES);
+    remplirMenu("iMotorisation", MOTORISATIONS);
+    remplirMenu("iBoite", BOITES);
+    document.getElementById("iMarque").addEventListener("change", remplirModeles);
+    remplirModeles();
+
+    // Voitures ajoutees par les visiteurs (a part des 29 millions, qui sont rangees par prix)
+    const ajoutees = [];
+
+    function ajouterVoiture() {
+      const message = document.getElementById("messageInsertion");
+      const voiture = {
+        marque: document.getElementById("iMarque").value,
+        modele: document.getElementById("iModele").value,
+        annee: Number(document.getElementById("iAnnee").value),
+        prix: Number(document.getElementById("iPrix").value),
+        motorisation: document.getElementById("iMotorisation").value,
+        boite: document.getElementById("iBoite").value,
+        portes: Number(document.getElementById("iPortes").value)
+      };
+
+      // Verifications simples (comme les contraintes CHECK de la base)
+      if (!Number.isInteger(voiture.annee) || voiture.annee < 1960 || voiture.annee > ANNEE_MAX) {
+        message.style.color = "#c00";
+        message.textContent = " L'année doit être entre 1960 et " + ANNEE_MAX + ".";
+        return;
+      }
+      if (!Number.isInteger(voiture.prix) || voiture.prix <= 0) {
+        message.style.color = "#c00";
+        message.textContent = " Le prix doit être un nombre entier positif.";
+        return;
+      }
+
+      ajoutees.push(voiture);
+      message.style.color = "";
+      message.textContent = " Voiture ajoutée sur le site ! Copie maintenant la requête dans SSMS.";
+      if (debutPrix) filtrer();
+
+      // Requete d'insertion + requete pour voir la ligne inseree
+      const texte = function(v) { return "'" + String(v).replace(/'/g, "''") + "'"; };
+      let sql = "-- 1) Ajouter la voiture dans la base\n";
+      sql += "INSERT INTO t_voiture (modele, annee, prix, motorisation, boite_vitesse, nb_portes, marque_fk)\n";
+      sql += "SELECT " + texte(voiture.modele) + ", " + voiture.annee + ", " + voiture.prix + ", " +
+        texte(voiture.motorisation) + ", " + texte(voiture.boite) + ", " + voiture.portes + ", marque_id\n";
+      sql += "FROM t_marque\n";
+      sql += "WHERE nom_marque = " + texte(voiture.marque) + ";\n\n";
+      sql += "-- 2) Voir la voiture qu'on vient d'ajouter (la derniere voiture_id)\n";
+      sql += "SELECT v.voiture_id, v.modele, m.nom_marque, v.annee, v.prix, v.motorisation, v.boite_vitesse, v.nb_portes\n";
+      sql += "FROM t_voiture v\n";
+      sql += "JOIN t_marque m ON v.marque_fk = m.marque_id\n";
+      sql += "WHERE v.voiture_id = (SELECT MAX(voiture_id) FROM t_voiture);";
+      document.getElementById("sqlInsertion").textContent = sql;
+    }
+
     // ===== Chaque filtre relance filtrer() des qu'on le change =====
     const idsFiltres = ["fMarque","fPrixMin","fPrixMax","fAnneeMin","fAnneeMax","fMotorisation","fBoite","fPortes"];
     idsFiltres.forEach(function(id) {
@@ -410,18 +519,38 @@ SELECT * FROM t_voiture WHERE prix = 15000;</div>
         if (affichees.length < MAX_LIGNES_AFFICHEES) affichees.push(k);
       }
 
-      let lignes = "";
-      affichees.forEach(function(k) {
+      // Les voitures ajoutees par les visiteurs passent les memes filtres
+      let lignesAAfficher = affichees.map(function(k) {
         const m = MODELES[vModele[k]];
         const infos = vInfos[k];
-        lignes += "<tr><td>" + m[1] + "</td><td>" + m[0] + "</td><td>" + (vAnnee[k] + 1960) + "</td><td>" +
-          vPrix[k] * 100 + " CHF</td><td>" + MOTORISATIONS[infos & 7] + "</td><td>" +
-          BOITES[(infos >> 3) & 3] + "</td><td>" + ((infos >> 5) + 2) + "</td></tr>";
+        return { modele: m[1], marque: m[0], annee: vAnnee[k] + 1960, prix: vPrix[k] * 100,
+          motorisation: MOTORISATIONS[infos & 7], boite: BOITES[(infos >> 3) & 3], portes: (infos >> 5) + 2 };
+      });
+      ajoutees.forEach(function(v) {
+        if (marque && v.marque !== marque) return;
+        if (prixMin && v.prix < Number(prixMin)) return;
+        if (prixMax && v.prix > Number(prixMax)) return;
+        if (anneeMin && v.annee < Number(anneeMin)) return;
+        if (anneeMax && v.annee > Number(anneeMax)) return;
+        if (motorisation && v.motorisation !== motorisation) return;
+        if (boite && v.boite !== boite) return;
+        if (portes && v.portes !== Number(portes)) return;
+        nbResultats++;
+        lignesAAfficher.push(Object.assign({ ajoutee: true }, v));
+      });
+      lignesAAfficher.sort(function(a, b) { return a.prix - b.prix; });
+      lignesAAfficher = lignesAAfficher.slice(0, MAX_LIGNES_AFFICHEES);
+
+      let lignes = "";
+      lignesAAfficher.forEach(function(v) {
+        lignes += "<tr" + (v.ajoutee ? " class=\"ajoutee\"" : "") + "><td>" + v.modele + "</td><td>" + v.marque +
+          "</td><td>" + v.annee + "</td><td>" + v.prix + " CHF</td><td>" + v.motorisation + "</td><td>" +
+          v.boite + "</td><td>" + v.portes + "</td></tr>";
       });
 
       // 3. Afficher le tableau de resultats (seulement les 200 moins cheres, comme le TOP 200 du SQL)
       document.getElementById("compteur").textContent =
-        nbResultats.toLocaleString("fr-CH") + " / " + NB_VOITURES.toLocaleString("fr-CH") + " voitures";
+        nbResultats.toLocaleString("fr-CH") + " / " + (NB_VOITURES + ajoutees.length).toLocaleString("fr-CH") + " voitures";
       document.getElementById("infoAffichage").textContent = nbResultats > MAX_LIGNES_AFFICHEES
         ? "(affichage des " + MAX_LIGNES_AFFICHEES + " moins chères)" : "";
       document.getElementById("resultats").innerHTML = lignes;
