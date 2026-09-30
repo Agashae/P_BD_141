@@ -8,25 +8,15 @@
     .filtres { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
     .filtres > div { display: flex; flex-direction: column; }
     label { font-size: 12px; margin-bottom: 3px; }
-    #sql { background: #f4f4f4; padding: 10px; white-space: pre-wrap; font-family: monospace; }
+    #sql, #sqlDemo { background: #f4f4f4; padding: 10px; white-space: pre-wrap; font-family: monospace; }
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
     th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
-    .index { background: #eef4ff; border: 1px solid #b8cdf5; padding: 10px; margin-bottom: 15px; }
-    #sqlIndex { font-family: monospace; font-size: 12px; white-space: pre-wrap; margin: 6px 0 0 0; }
     #tempsFiltre { font-family: monospace; font-size: 20px; }
   </style>
 </head>
 <body>
 
   <h1>Catalogue de voitures</h1>
-
-  <div class="index">
-    <label style="font-size: 14px;">
-      <input type="checkbox" id="avecIndex" checked onchange="filtrer()">
-      Index sur le prix (comme <code>IX_voiture_prix</code> dans SQL Server)
-    </label>
-    <pre id="sqlIndex"></pre>
-  </div>
 
   <p>Temps du filtre : <span id="tempsFiltre">-</span></p>
 
@@ -88,8 +78,22 @@
 
   <h2>Requête SQL à copier dans SSMS</h2>
   <div id="sql"></div>
-  <button onclick="copierSql()">Copier la requête</button>
+  <button onclick="copierSql('sql', 'messageCopie')">Copier la requête</button>
   <span id="messageCopie"></span>
+
+  <h2>Démonstration de l'index</h2>
+  <p>La clé primaire voiture_id est indexée automatiquement par SQL Server, le prix ne l'est pas.
+    Lance ces deux requêtes dans SSMS et compare le temps dans l'onglet Messages.</p>
+  <div id="sqlDemo">SET STATISTICS TIME ON;
+SET STATISTICS IO ON;
+
+-- 1) Colonne indexée (clé primaire) : accès direct à la bonne ligne
+SELECT * FROM t_voiture WHERE voiture_id = 15000000;
+
+-- 2) Colonne non indexée : lecture des 29 millions de lignes
+SELECT * FROM t_voiture WHERE prix = 15000;</div>
+  <button onclick="copierSql('sqlDemo', 'messageCopieDemo')">Copier</button>
+  <span id="messageCopieDemo"></span>
 
   <p><strong id="compteur">Génération des voitures...</strong> <span id="infoAffichage"></span></p>
   <table id="tableauResultats">
@@ -327,7 +331,6 @@
     function filtrer() {
       if (!debutPrix) return; // generation pas encore terminee
       const t0 = performance.now(); // mesure le vrai temps du filtre (sans les 200 ms d'attente)
-      const avecIndex = document.getElementById("avecIndex").checked;
 
       // 1. Lire la valeur de chaque filtre
       const marque = document.getElementById("fMarque").value;
@@ -364,29 +367,14 @@
       let nbResultats = 0;
       const affichees = []; // positions des voitures a afficher, par prix croissant
 
-      if (avecIndex) {
-        // AVEC index (Index Seek) : on saute directement a la tranche de prix demandee.
-        // Les voitures y sont deja rangees par prix, donc les 200 premieres sont les moins cheres.
-        const kDebut = debutPrix[casePrixMin];
-        const kFin = casePrixMax >= casePrixMin ? debutPrix[casePrixMax + 1] : kDebut;
-        for (let k = kDebut; k < kFin; k++) {
-          if (!correspond(k)) continue;
-          nbResultats++;
-          if (affichees.length < MAX_LIGNES_AFFICHEES) affichees.push(k);
-        }
-      } else {
-        // SANS index (Table Scan) : on lit TOUTES les voitures, on teste aussi le prix,
-        // et on garde les 200 moins cheres (Top N Sort, comme SQL Server pour TOP + ORDER BY).
-        for (let k = 0; k < NB_VOITURES; k++) {
-          const p = vPrix[k];
-          if (p < casePrixMin || p > casePrixMax || !correspond(k)) continue;
-          nbResultats++;
-          if (affichees.length === MAX_LIGNES_AFFICHEES && p >= vPrix[affichees[MAX_LIGNES_AFFICHEES - 1]]) continue;
-          if (affichees.length < MAX_LIGNES_AFFICHEES) affichees.push(k);
-          let j = affichees.length - 1;
-          while (j > 0 && vPrix[affichees[j - 1]] > p) { affichees[j] = affichees[j - 1]; j--; }
-          affichees[j] = k;
-        }
+      // Les voitures sont rangees par prix : on saute directement a la tranche de prix demandee,
+      // et les 200 premieres trouvees sont donc les moins cheres.
+      const kDebut = debutPrix[casePrixMin];
+      const kFin = casePrixMax >= casePrixMin ? debutPrix[casePrixMax + 1] : kDebut;
+      for (let k = kDebut; k < kFin; k++) {
+        if (!correspond(k)) continue;
+        nbResultats++;
+        if (affichees.length < MAX_LIGNES_AFFICHEES) affichees.push(k);
       }
 
       let lignes = "";
@@ -406,7 +394,7 @@
       document.getElementById("resultats").innerHTML = lignes;
 
       document.getElementById("tempsFiltre").textContent =
-        (performance.now() - t0).toFixed(1) + " ms " + (avecIndex ? "(avec index)" : "(sans index)");
+        (performance.now() - t0).toFixed(1) + " ms";
 
       // 4. Construire le texte de la requete SQL en fonction des filtres actifs
       const conditions = [];
@@ -420,8 +408,7 @@
       if (portes) conditions.push("v.nb_portes = " + portes);
 
       // Meme travail que le site : compter TOUS les resultats (nb_total) et renvoyer les 200 moins chers
-      // Timer : on note l'heure avant la requete, puis on affiche la duree juste apres
-      let sql = "DECLARE @debut DATETIME2 = SYSDATETIME();\n\n";
+      let sql = "SET STATISTICS TIME ON;\n\n";
       sql += "SELECT TOP " + MAX_LIGNES_AFFICHEES + " COUNT(*) OVER() AS nb_total,\n";
       sql += "  v.modele, m.nom_marque, v.annee, v.prix, v.motorisation, v.boite_vitesse, v.nb_portes\n";
       sql += "FROM t_voiture v\n";
@@ -429,25 +416,19 @@
       if (conditions.length > 0) {
         sql += "WHERE " + conditions.join("\n  AND ") + "\n";
       }
-      sql += "ORDER BY v.prix ASC;\n\n";
-      sql += "SELECT DATEDIFF(MILLISECOND, @debut, SYSDATETIME()) AS temps_ms;";
+      sql += "ORDER BY v.prix ASC;";
 
       document.getElementById("sql").textContent = sql;
 
-      // SQL a lancer dans SSMS pour avoir le meme etat d'index que le site
-      document.getElementById("sqlIndex").textContent = avecIndex
-        ? "CREATE NONCLUSTERED INDEX IX_voiture_prix ON t_voiture (prix)\n" +
-          "  INCLUDE (modele, annee, motorisation, boite_vitesse, nb_portes, marque_fk);"
-        : "DROP INDEX IF EXISTS IX_voiture_prix ON t_voiture;";
     }
 
     // ===== Copier le texte SQL dans le presse-papier =====
-    function copierSql() {
-      const texte = document.getElementById("sql").textContent;
+    function copierSql(idSql, idMessage) {
+      const texte = document.getElementById(idSql).textContent;
       navigator.clipboard.writeText(texte).then(function() {
-        document.getElementById("messageCopie").textContent = " Copié !";
+        document.getElementById(idMessage).textContent = " Copié !";
         setTimeout(function() {
-          document.getElementById("messageCopie").textContent = "";
+          document.getElementById(idMessage).textContent = "";
         }, 2000);
       });
     }
