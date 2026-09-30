@@ -8,7 +8,7 @@
     .filtres { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
     .filtres > div { display: flex; flex-direction: column; }
     label { font-size: 12px; margin-bottom: 3px; }
-    #sql, #sqlDemo { background: #f4f4f4; padding: 10px; white-space: pre-wrap; font-family: monospace; }
+    #sql { background: #f4f4f4; padding: 10px; white-space: pre-wrap; font-family: monospace; }
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
     th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
     #tempsFiltre, #tempsTotal { font-family: monospace; font-size: 20px; }
@@ -84,20 +84,6 @@
   <div id="sql"></div>
   <button onclick="copierSql('sql', 'messageCopie')">Copier la requête</button>
   <span id="messageCopie"></span>
-
-  <h2>Démonstration de l'index</h2>
-  <p>La clé primaire voiture_id est indexée automatiquement par SQL Server, le prix ne l'est pas.
-    Lance ces deux requêtes dans SSMS et compare le temps dans l'onglet Messages.</p>
-  <div id="sqlDemo">SET STATISTICS TIME ON;
-SET STATISTICS IO ON;
-
--- 1) Colonne indexée (clé primaire) : accès direct à la bonne ligne
-SELECT * FROM t_voiture WHERE voiture_id = 15000000;
-
--- 2) Colonne non indexée : lecture des 29 millions de lignes
-SELECT * FROM t_voiture WHERE prix = 15000;</div>
-  <button onclick="copierSql('sqlDemo', 'messageCopieDemo')">Copier</button>
-  <span id="messageCopieDemo"></span>
 
   <p><strong id="compteur">Génération des voitures...</strong> <span id="infoAffichage"></span></p>
   <table id="tableauResultats">
