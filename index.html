@@ -11,7 +11,8 @@
     #sql, #sqlDemo { background: #f4f4f4; padding: 10px; white-space: pre-wrap; font-family: monospace; }
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
     th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
-    #tempsFiltre { font-family: monospace; font-size: 20px; }
+    #tempsFiltre, #tempsTotal { font-family: monospace; font-size: 20px; }
+    #resultatTotal { font-weight: bold; color: #1a7f37; }
   </style>
 </head>
 <body>
@@ -19,6 +20,9 @@
   <h1>Catalogue de voitures</h1>
 
   <p>Temps du filtre : <span id="tempsFiltre">-</span></p>
+  <p>Temps total : <span id="tempsTotal">0.0 ms (0 filtre)</span>
+    <button onclick="terminerFiltres()">J'ai fini de filtrer</button></p>
+  <p id="resultatTotal"></p>
 
   <div class="filtres">
     <div>
@@ -325,7 +329,36 @@ SELECT * FROM t_voiture WHERE prix = 15000;</div>
     function filtrerBientot() {
       if (!debutPrix) return; // generation pas encore terminee (filtrer() sera appele a la fin)
       clearTimeout(minuteurFiltre);
-      minuteurFiltre = setTimeout(filtrer, 200);
+      minuteurFiltre = setTimeout(function() { ajouterAuTotal(filtrer()); }, 200);
+    }
+
+    // ===== Temps total : additionne le temps de chaque filtre jusqu'au bouton « J'ai fini de filtrer » =====
+    let tempsTotal = 0;
+    let nbFiltres = 0;
+
+    function afficherTotal() {
+      document.getElementById("tempsTotal").textContent =
+        tempsTotal.toFixed(1) + " ms (" + nbFiltres + (nbFiltres > 1 ? " filtres)" : " filtre)");
+    }
+
+    function ajouterAuTotal(duree) {
+      if (nbFiltres === 0) document.getElementById("resultatTotal").textContent = ""; // nouvelle serie
+      tempsTotal += duree;
+      nbFiltres++;
+      afficherTotal();
+    }
+
+    function terminerFiltres() {
+      const resultat = document.getElementById("resultatTotal");
+      if (nbFiltres === 0 && resultat.textContent !== "") return; // garde le resultat deja affiche
+      resultat.textContent = nbFiltres === 0
+        ? "Aucun filtre appliqué."
+        : "Temps total pour tous les filtres : " + tempsTotal.toFixed(1) + " ms (" +
+          nbFiltres + (nbFiltres > 1 ? " filtres)" : " filtre)");
+      // remise a zero pour la personne suivante
+      tempsTotal = 0;
+      nbFiltres = 0;
+      afficherTotal();
     }
 
     function filtrer() {
@@ -393,8 +426,8 @@ SELECT * FROM t_voiture WHERE prix = 15000;</div>
         ? "(affichage des " + MAX_LIGNES_AFFICHEES + " moins chères)" : "";
       document.getElementById("resultats").innerHTML = lignes;
 
-      document.getElementById("tempsFiltre").textContent =
-        (performance.now() - t0).toFixed(1) + " ms";
+      const duree = performance.now() - t0;
+      document.getElementById("tempsFiltre").textContent = duree.toFixed(1) + " ms";
 
       // 4. Construire le texte de la requete SQL en fonction des filtres actifs
       const conditions = [];
@@ -420,6 +453,7 @@ SELECT * FROM t_voiture WHERE prix = 15000;</div>
 
       document.getElementById("sql").textContent = sql;
 
+      return duree;
     }
 
     // ===== Copier le texte SQL dans le presse-papier =====
