@@ -90,6 +90,9 @@
   <div id="sql"></div>
   <button onclick="copierSql()">Copier la requête</button>
   <span id="messageCopie"></span>
+  <p style="font-size: 13px;">Dans SSMS, le dernier tableau de résultats affiche côte à côte
+    <code>temps_sql_server_ms</code>, <code>temps_site_ms</code> et <code>rapport</code>
+    (combien de fois SQL Server est plus lent que le site).</p>
 
   <p><strong id="compteur">Génération des voitures...</strong> <span id="infoAffichage"></span></p>
   <table id="tableauResultats">
@@ -405,8 +408,9 @@
         ? "(affichage des " + MAX_LIGNES_AFFICHEES + " moins chères)" : "";
       document.getElementById("resultats").innerHTML = lignes;
 
-      document.getElementById("tempsFiltre").textContent =
-        (performance.now() - t0).toFixed(1) + " ms " + (avecIndex ? "(avec index)" : "(sans index)");
+      const tempsSite = (performance.now() - t0).toFixed(1);
+      const etatIndex = avecIndex ? "(avec index)" : "(sans index)";
+      document.getElementById("tempsFiltre").textContent = tempsSite + " ms " + etatIndex;
 
       // 4. Construire le texte de la requete SQL en fonction des filtres actifs
       const conditions = [];
@@ -420,7 +424,10 @@
       if (portes) conditions.push("v.nb_portes = " + portes);
 
       // Meme travail que le site : compter TOUS les resultats (nb_total) et renvoyer les 200 moins chers
-      let sql = "SET STATISTICS TIME ON;\n\n";
+      // Le timer SQL : on note l'heure avant la requete, puis on calcule la duree juste apres
+      let sql = "-- Temps sur le site : " + tempsSite + " ms " + etatIndex + "\n";
+      sql += "SET STATISTICS TIME ON;\n";
+      sql += "DECLARE @debut DATETIME2 = SYSDATETIME();\n\n";
       sql += "SELECT TOP " + MAX_LIGNES_AFFICHEES + " COUNT(*) OVER() AS nb_total,\n";
       sql += "  v.modele, m.nom_marque, v.annee, v.prix, v.motorisation, v.boite_vitesse, v.nb_portes\n";
       sql += "FROM t_voiture v\n";
@@ -428,7 +435,11 @@
       if (conditions.length > 0) {
         sql += "WHERE " + conditions.join("\n  AND ") + "\n";
       }
-      sql += "ORDER BY v.prix ASC;";
+      sql += "ORDER BY v.prix ASC;\n\n";
+      sql += "DECLARE @temps_sql DECIMAL(12,1) = DATEDIFF(MICROSECOND, @debut, SYSDATETIME()) / 1000.0;\n";
+      sql += "SELECT @temps_sql AS temps_sql_server_ms,\n";
+      sql += "  " + tempsSite + " AS temps_site_ms,\n";
+      sql += "  CAST(@temps_sql / NULLIF(" + tempsSite + ", 0) AS DECIMAL(12,1)) AS rapport;";
 
       document.getElementById("sql").textContent = sql;
 
